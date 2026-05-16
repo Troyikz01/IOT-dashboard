@@ -10,9 +10,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
-/* ═══════════════════════════════════════════════
-   CSS VARIABLES & RESET
-═══════════════════════════════════════════════ */
 :root {
   --em:#00d68f;--em-dim:#00a86b;--em-glow:rgba(0,214,143,0.18);--em-bg:rgba(0,214,143,0.07);
   --amber:#f59e0b;--amber-bg:rgba(245,158,11,0.1);--red:#ef4444;--red-bg:rgba(239,68,68,0.1);
@@ -21,7 +18,7 @@
   --card:rgba(255,255,255,0.035);--card-b:rgba(255,255,255,0.065);--card-hov:rgba(255,255,255,0.055);
   --glass:rgba(13,17,32,0.7);--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
   --text:#e8edf5;--text2:#8a96b0;--text3:#4a5568;
-  --sidebar-w:240px;--sidebar-w-c:64px;--nav-h:58px;--radius:14px;--radius-sm:8px;
+  --sidebar-w:240px;--sidebar-w-c:64px;--nav-h:58px;--radius:14px;
   --shadow:0 8px 32px rgba(0,0,0,0.4);--shadow-em:0 0 24px rgba(0,214,143,0.15),0 4px 16px rgba(0,0,0,0.3);
 }
 [data-theme="light"]{
@@ -38,19 +35,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
-
-/* ═══════════════════════════════════════
-   LAYOUT
-═══════════════════════════════════════ */
+script,style{display:none!important;}
 .app-shell{display:flex;min-height:100vh;position:relative;z-index:1;}
-.sidebar{
-  width:var(--sidebar-w);min-height:100vh;background:var(--bg2);
-  border-right:1px solid var(--border);display:flex;flex-direction:column;
-  position:fixed;top:0;left:0;z-index:200;
-  overflow:hidden;
-  transition:width 0.3s cubic-bezier(0.4,0,0.2,1);
-}
-.sidebar.collapsed{width:var(--sidebar-w-c);overflow:visible;transition:width 0.3s cubic-bezier(0.4,0,0.2,1),overflow 0s 0.31s;}
+.sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:200;overflow:hidden;transition:width 0.3s cubic-bezier(0.4,0,0.2,1);}
+.sidebar.collapsed{width:var(--sidebar-w-c);overflow:visible;}
 .sidebar-brand{height:var(--nav-h);display:flex;align-items:center;padding:0 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0;}
 .brand-orb{width:32px;height:32px;border-radius:9px;flex-shrink:0;background:linear-gradient(135deg,var(--em-dim),var(--em));display:grid;place-items:center;font-size:16px;box-shadow:0 0 16px var(--em-glow);}
 .brand-text{white-space:nowrap;overflow:hidden;}
@@ -62,8 +50,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .status-dot{width:7px;height:7px;border-radius:50%;background:var(--em);box-shadow:0 0 8px var(--em);flex-shrink:0;animation:pls 2s ease-in-out infinite;}
 @keyframes pls{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
 .status-dot.off{background:var(--red);box-shadow:0 0 8px var(--red);animation:none;}
+.status-dot.warn{background:var(--amber);box-shadow:0 0 8px var(--amber);animation:pls 1s ease-in-out infinite;}
+.status-dot.connecting{background:var(--blue);box-shadow:0 0 8px var(--blue);animation:pls 0.7s ease-in-out infinite;}
 .sidebar-status .st{font-size:0.63rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--em);}
 .sidebar-status .st.off{color:var(--red);}
+.sidebar-status .st.warn{color:var(--amber);}
+.sidebar-status .st.connecting{color:var(--blue);}
 .sidebar-nav{flex:1;padding:6px 8px;overflow-y:auto;overflow-x:hidden;}
 .nav-section{font-size:0.59rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);padding:10px 8px 4px;white-space:nowrap;}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;transition:all 0.18s;margin-bottom:2px;position:relative;white-space:nowrap;overflow:hidden;}
@@ -73,13 +65,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .nav-ico{width:18px;height:18px;flex-shrink:0;display:grid;place-items:center;font-size:15px;}
 .nav-label{font-size:0.8rem;font-weight:500;}
 .nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:0.58rem;font-weight:700;padding:2px 5px;border-radius:10px;min-width:16px;text-align:center;}
-.sidebar.collapsed .nav-item{overflow:visible;}
-.sidebar.collapsed .nav-item::after{content:attr(data-label);position:absolute;left:calc(100% + 12px);top:50%;transform:translateY(-50%);background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:5px 11px;border-radius:8px;font-size:0.75rem;font-weight:500;white-space:nowrap;box-shadow:var(--shadow);z-index:400;pointer-events:none;opacity:0;transition:opacity 0.15s;}
-.sidebar.collapsed .nav-item:hover::after{opacity:1;}
 .sidebar.collapsed .nav-label,.sidebar.collapsed .nav-section,.sidebar.collapsed .nav-badge,.sidebar.collapsed .brand-text,.sidebar.collapsed .sidebar-status .st{display:none;}
 .sidebar.collapsed .sidebar-status{padding:7px;justify-content:center;}
-.sidebar.collapsed .nav-item{justify-content:center;padding:9px 0;}
+.sidebar.collapsed .nav-item{justify-content:center;padding:9px 0;overflow:visible;}
 .sidebar.collapsed .nav-item.active::before{display:none;}
+.sidebar.collapsed .nav-item::after{content:attr(data-label);position:absolute;left:calc(100% + 12px);top:50%;transform:translateY(-50%);background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:5px 11px;border-radius:8px;font-size:0.75rem;font-weight:500;white-space:nowrap;box-shadow:var(--shadow);z-index:400;pointer-events:none;opacity:0;transition:opacity 0.15s;}
+.sidebar.collapsed .nav-item:hover::after{opacity:1;}
 .main-wrap{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;transition:margin-left 0.3s cubic-bezier(0.4,0,0.2,1);min-width:0;}
 .main-wrap.collapsed{margin-left:var(--sidebar-w-c);}
 .navbar{height:var(--nav-h);background:var(--glass);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;}
@@ -92,12 +83,25 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .nb-icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--card);cursor:pointer;display:grid;place-items:center;font-size:14px;color:var(--text2);transition:all 0.18s;position:relative;}
 .nb-icon-btn:hover{background:var(--card-b);color:var(--text);border-color:var(--border2);}
 .notif-badge{position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:var(--red);font-size:0.55rem;font-weight:700;color:#fff;display:grid;place-items:center;border:2px solid var(--bg2);}
+.conn-pill{display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:default;transition:all 0.2s;}
+.conn-pill .cp-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.conn-pill .cp-label{font-family:'JetBrains Mono',monospace;font-size:0.6rem;font-weight:600;white-space:nowrap;}
+.conn-pill.online{border-color:rgba(0,214,143,0.3);background:var(--em-bg);}
+.conn-pill.online .cp-dot{background:var(--em);box-shadow:0 0 6px var(--em);animation:pls 2s ease-in-out infinite;}
+.conn-pill.online .cp-label{color:var(--em);}
+.conn-pill.offline{border-color:rgba(239,68,68,0.3);background:var(--red-bg);}
+.conn-pill.offline .cp-dot{background:var(--red);box-shadow:0 0 6px var(--red);}
+.conn-pill.offline .cp-label{color:var(--red);}
+.conn-pill.warn{border-color:rgba(245,158,11,0.3);background:var(--amber-bg);}
+.conn-pill.warn .cp-dot{background:var(--amber);box-shadow:0 0 6px var(--amber);animation:pls 1s ease-in-out infinite;}
+.conn-pill.warn .cp-label{color:var(--amber);}
+.conn-pill.connecting{border-color:rgba(59,130,246,0.3);background:var(--blue-bg);}
+.conn-pill.connecting .cp-dot{background:var(--blue);box-shadow:0 0 6px var(--blue);animation:pls 0.7s ease-in-out infinite;}
+.conn-pill.connecting .cp-label{color:var(--blue);}
 .page-content{flex:1;padding:20px;overflow-y:auto;}
 .page{display:none;}
-.page.active{display:block;animation:pagein 0.25s ease;}
-@keyframes pagein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-
-/* ══ UTILITY ══ */
+.page.active{display:block;animation:pagein 0.2s ease;}
+@keyframes pagein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .sec-title{font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);}
 .sec-subtitle{font-size:0.75rem;color:var(--text2);margin-top:2px;}
@@ -105,13 +109,49 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
 .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
 .gap{height:20px;}
-
-/* ══ CARDS ══ */
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;transition:all 0.22s;position:relative;overflow:hidden;}
+.conn-status-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.conn-banner{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;border:1px solid;transition:all 0.3s;}
+.conn-banner .cb-icon{font-size:18px;flex-shrink:0;}
+.conn-banner .cb-body{flex:1;min-width:0;}
+.conn-banner .cb-title{font-size:0.8rem;font-weight:600;}
+.conn-banner .cb-sub{font-size:0.67rem;margin-top:1px;font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.conn-banner .cb-badge{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:0.65rem;font-weight:700;padding:4px 9px;border-radius:6px;flex-shrink:0;}
+.conn-banner .cb-pulse{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.conn-banner.sb-online{background:var(--em-bg);border-color:rgba(0,214,143,0.25);}
+.conn-banner.sb-online .cb-title{color:var(--text);}
+.conn-banner.sb-online .cb-sub{color:var(--em);}
+.conn-banner.sb-online .cb-badge{background:rgba(0,214,143,0.15);color:var(--em);}
+.conn-banner.sb-online .cb-pulse{background:var(--em);box-shadow:0 0 8px var(--em);animation:pls 2s ease-in-out infinite;}
+.conn-banner.sb-connecting{background:var(--blue-bg);border-color:rgba(59,130,246,0.25);}
+.conn-banner.sb-connecting .cb-title{color:var(--text);}
+.conn-banner.sb-connecting .cb-sub{color:var(--blue);}
+.conn-banner.sb-connecting .cb-badge{background:rgba(59,130,246,0.15);color:var(--blue);}
+.conn-banner.sb-connecting .cb-pulse{background:var(--blue);box-shadow:0 0 8px var(--blue);animation:pls 0.7s ease-in-out infinite;}
+.conn-banner.sb-error{background:var(--red-bg);border-color:rgba(239,68,68,0.25);}
+.conn-banner.sb-error .cb-title{color:var(--text);}
+.conn-banner.sb-error .cb-sub{color:var(--red);}
+.conn-banner.sb-error .cb-badge{background:rgba(239,68,68,0.15);color:var(--red);}
+.conn-banner.sb-error .cb-pulse{background:var(--red);}
+.conn-banner.esp-online{background:var(--em-bg);border-color:rgba(0,214,143,0.25);}
+.conn-banner.esp-online .cb-title{color:var(--text);}
+.conn-banner.esp-online .cb-sub{color:var(--em);}
+.conn-banner.esp-online .cb-badge{background:rgba(0,214,143,0.15);color:var(--em);}
+.conn-banner.esp-online .cb-pulse{background:var(--em);box-shadow:0 0 8px var(--em);animation:pls 2s ease-in-out infinite;}
+.conn-banner.esp-stale{background:var(--amber-bg);border-color:rgba(245,158,11,0.25);}
+.conn-banner.esp-stale .cb-title{color:var(--text);}
+.conn-banner.esp-stale .cb-sub{color:var(--amber);}
+.conn-banner.esp-stale .cb-badge{background:rgba(245,158,11,0.15);color:var(--amber);}
+.conn-banner.esp-stale .cb-pulse{background:var(--amber);box-shadow:0 0 8px var(--amber);animation:pls 1s ease-in-out infinite;}
+.conn-banner.esp-offline{background:var(--red-bg);border-color:rgba(239,68,68,0.25);}
+.conn-banner.esp-offline .cb-title{color:var(--text);}
+.conn-banner.esp-offline .cb-sub{color:var(--red);}
+.conn-banner.esp-offline .cb-badge{background:rgba(239,68,68,0.15);color:var(--red);}
+.conn-banner.esp-offline .cb-pulse{background:var(--red);}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;transition:all 0.2s;position:relative;overflow:hidden;}
 .card::before{content:'';position:absolute;inset:0;border-radius:var(--radius);background:linear-gradient(135deg,rgba(255,255,255,0.02),transparent);pointer-events:none;}
 .card:hover{border-color:var(--border2);box-shadow:var(--shadow);transform:translateY(-1px);}
 .card-sm{padding:14px;}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:12px;transition:all 0.22s;position:relative;overflow:hidden;cursor:default;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:12px;transition:all 0.2s;position:relative;overflow:hidden;cursor:default;}
 .stat-card:hover{border-color:var(--border2);box-shadow:var(--shadow);transform:translateY(-2px);}
 .stat-card-top{display:flex;align-items:flex-start;justify-content:space-between;}
 .stat-ico{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:18px;}
@@ -119,16 +159,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .stat-trend.up{background:var(--em-bg);color:var(--em);}
 .stat-trend.down{background:var(--red-bg);color:var(--red);}
 .stat-trend.neu{background:var(--amber-bg);color:var(--amber);}
+.stat-trend.blue{background:var(--blue-bg);color:var(--blue);}
 .stat-val{font-size:1.6rem;font-weight:700;line-height:1.1;letter-spacing:-0.02em;}
 .stat-label{font-size:0.72rem;color:var(--text2);}
 .ring-wrap{position:relative;width:60px;height:60px;flex-shrink:0;}
 .ring-wrap svg{transform:rotate(-90deg);}
 .ring-track{fill:none;stroke:var(--border2);stroke-width:4;}
-.ring-fill{fill:none;stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1);}
+.ring-fill{fill:none;stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1);}
 .ring-pct{position:absolute;inset:0;display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:0.68rem;font-weight:700;}
-
-/* ══ BIN PANEL ══ */
-.bin-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;gap:16px;transition:all 0.22s;}
+.bin-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;gap:16px;transition:all 0.2s;}
 .bin-panel:hover{border-color:var(--border2);box-shadow:var(--shadow-em);}
 .bin-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
 .bin-label{display:flex;align-items:center;gap:9px;}
@@ -157,7 +196,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .fill-pct.warn{color:var(--amber);}
 .fill-pct.full{color:var(--red);}
 .fill-track{height:8px;background:var(--bg3);border-radius:6px;overflow:hidden;border:1px solid var(--border);}
-.fill-bar{height:100%;border-radius:6px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1),background 0.3s;}
+.fill-bar{height:100%;border-radius:6px;transition:width 0.5s cubic-bezier(0.4,0,0.2,1),background 0.3s;}
 .fill-bar.ok{background:linear-gradient(90deg,var(--em-dim),var(--em));}
 .fill-bar.warn{background:linear-gradient(90deg,#d97706,var(--amber));}
 .fill-bar.full{background:linear-gradient(90deg,#dc2626,var(--red));animation:bar-blink 0.6s ease-in-out infinite alternate;}
@@ -174,8 +213,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .alert-strip.on{display:flex;}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
-.btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--card);color:var(--text2);font-family:'Outfit',sans-serif;font-size:0.75rem;font-weight:500;cursor:pointer;transition:all 0.18s;position:relative;overflow:hidden;}
-.btn::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at center,rgba(255,255,255,0.15),transparent 70%);opacity:0;transition:opacity 0.3s;}
+.btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--card);color:var(--text2);font-family:'Outfit',sans-serif;font-size:0.75rem;font-weight:500;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden;}
+.btn::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at center,rgba(255,255,255,0.15),transparent 70%);opacity:0;transition:opacity 0.2s;}
 .btn:hover::after{opacity:1;}
 .btn:active{transform:scale(0.97);}
 .btn.em{background:var(--em-bg);border-color:rgba(0,214,143,0.3);color:var(--em);}
@@ -186,8 +225,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .btn.blue{background:var(--blue-bg);border-color:rgba(59,130,246,0.3);color:var(--blue);}
 .btn.blue:hover{background:var(--blue);color:#fff;}
 .btn:disabled{opacity:0.45;cursor:not-allowed;pointer-events:none;}
-
-/* ══ SENSORS ══ */
 .sensor-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;transition:all 0.18s;}
 .sensor-item:hover{border-color:var(--border2);}
 .s-left{display:flex;align-items:center;gap:10px;}
@@ -201,9 +238,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .s-badge.active{background:var(--blue-bg);color:var(--blue);}
 .s-badge.warn{background:var(--amber-bg);color:var(--amber);}
 .s-badge.danger{background:var(--red-bg);color:var(--red);}
+.s-badge.offline{background:var(--red-bg);color:var(--red);}
+.s-badge.connecting{background:var(--blue-bg);color:var(--blue);}
 .s-time{font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:var(--text3);}
-
-/* ══ OLED ══ */
 .oled-wrap{background:#040a04;border:2px solid #0f2010;border-radius:10px;padding:14px 16px;font-family:'JetBrains Mono',monospace;font-size:0.72rem;line-height:1.9;position:relative;overflow:hidden;}
 .oled-wrap::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,255,0,0.015) 4px);pointer-events:none;}
 .oled-line{color:#00cc66;text-shadow:0 0 6px #00cc66;white-space:nowrap;}
@@ -212,15 +249,13 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .oled-line.danger{color:#cc2200;text-shadow:0 0 6px #cc2200;}
 .oled-cursor{display:inline-block;width:8px;height:13px;background:#00cc66;vertical-align:middle;animation:blink 1s step-end infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-
-/* ══ LOGS ══ */
 .log-toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
 .log-filter{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text2);font-family:'Outfit',sans-serif;font-size:0.72rem;outline:none;cursor:pointer;}
 .log-search{flex:1;min-width:120px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text);font-family:'Outfit',sans-serif;font-size:0.72rem;outline:none;}
 .log-search:focus{border-color:var(--border2);}
 .log-feed{display:flex;flex-direction:column;gap:5px;max-height:320px;overflow-y:auto;}
-.log-entry{display:flex;align-items:flex-start;gap:9px;padding:8px 11px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;animation:logslide 0.2s ease;}
-@keyframes logslide{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
+.log-entry{display:flex;align-items:flex-start;gap:9px;padding:8px 11px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;animation:logslide 0.15s ease;}
+@keyframes logslide{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:translateX(0)}}
 .log-pip{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;}
 .log-pip.info{background:var(--em);}
 .log-pip.warn{background:var(--amber);}
@@ -228,79 +263,55 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .log-pip.action{background:var(--blue);}
 .log-msg{font-size:0.74rem;line-height:1.4;}
 .log-ts{font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:var(--text3);margin-top:2px;}
-
-/* ══ CHARTS ══ */
 .chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column;gap:12px;}
 .chart-card canvas{max-height:200px;}
-
-/* ══ SETTINGS ══ */
-.settings-group{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;}
-.sg-label{font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
-.input-field{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'Outfit',sans-serif;font-size:0.82rem;outline:none;width:100%;transition:border-color 0.18s;}
-.input-field:focus{border-color:var(--em);}
-.input-field::placeholder{color:var(--text3);}
+.code-block{background:#020408;border:1px solid var(--border);border-radius:9px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:0.69rem;line-height:1.7;color:#a8c0d6;overflow-x:auto;white-space:pre;}
 .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
 .toggle-row:last-child{border-bottom:none;}
 .toggle-info .t-name{font-size:0.8rem;font-weight:500;}
 .toggle-info .t-desc{font-size:0.65rem;color:var(--text2);margin-top:2px;}
 .toggle{position:relative;width:38px;height:20px;flex-shrink:0;}
 .toggle input{opacity:0;width:0;height:0;}
-.toggle-slider{position:absolute;inset:0;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;cursor:pointer;transition:all 0.25s;}
-.toggle-slider::before{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:var(--text3);top:2px;left:2px;transition:all 0.25s;}
+.toggle-slider{position:absolute;inset:0;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;cursor:pointer;transition:all 0.2s;}
+.toggle-slider::before{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:var(--text3);top:2px;left:2px;transition:all 0.2s;}
 .toggle input:checked + .toggle-slider{background:var(--em-bg);border-color:rgba(0,214,143,0.4);}
 .toggle input:checked + .toggle-slider::before{transform:translateX(18px);background:var(--em);box-shadow:0 0 8px var(--em);}
-.code-block{background:#020408;border:1px solid var(--border);border-radius:9px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:0.69rem;line-height:1.7;color:#a8c0d6;overflow-x:auto;white-space:pre;}
-.code-block .kw{color:#569cd6;}.code-block .str{color:#ce9178;}.code-block .cmt{color:#6a9955;}.code-block .fn{color:#dcdcaa;}.code-block .num{color:#b5cea8;}
-
-/* ══ GAS STATUS BADGE ══ */
-.gas-status{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:9px;font-size:0.75rem;font-weight:500;margin-top:10px;}
-.gas-status.ok{background:var(--em-bg);border:1px solid rgba(0,214,143,0.2);color:var(--em);}
-.gas-status.fail{background:var(--red-bg);border:1px solid rgba(239,68,68,0.2);color:var(--red);}
-.gas-status.pending{background:var(--amber-bg);border:1px solid rgba(245,158,11,0.2);color:var(--amber);}
-.gas-status.idle{background:var(--card);border:1px solid var(--border);color:var(--text2);}
-
-/* ══ NOTIFICATION HISTORY ══ */
-.notif-hist-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;margin-bottom:6px;}
-.notif-hist-item .nh-ico{font-size:18px;flex-shrink:0;}
-.notif-hist-item .nh-body .nh-title{font-size:0.78rem;font-weight:600;}
-.notif-hist-item .nh-body .nh-sub{font-size:0.66rem;color:var(--text2);margin-top:2px;}
-.notif-hist-item .nh-body .nh-ts{font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:var(--text3);margin-top:4px;}
-.notif-hist-item.sent{border-left:3px solid var(--em);}
-.notif-hist-item.failed{border-left:3px solid var(--red);}
-.notif-hist-item.pending{border-left:3px solid var(--amber);}
-
-/* ══ TOAST ══ */
-.toast-container{position:fixed;top:70px;right:20px;z-index:9998;display:flex;flex-direction:column;gap:8px;}
-.toast{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:11px 16px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);min-width:260px;animation:toastin 0.3s cubic-bezier(0.34,1.56,0.64,1);}
-@keyframes toastin{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
-.toast.fadeout{animation:toastout 0.3s ease forwards;}
-@keyframes toastout{to{opacity:0;transform:translateX(40px)}}
-.toast-icon{font-size:16px;flex-shrink:0;}
-.toast-msg{font-size:0.76rem;flex:1;}
-.toast-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;}
-
-/* ══ NOTIF PANEL ══ */
 .notif-panel{position:absolute;top:calc(100% + 8px);right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:300px;box-shadow:var(--shadow);animation:pagein 0.2s ease;z-index:200;}
 .notif-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
 .notif-head .nh-title{font-size:0.82rem;font-weight:600;}
 .notif-mark{background:none;border:none;color:var(--em);font-size:0.7rem;cursor:pointer;}
 .notif-list{max-height:280px;overflow-y:auto;}
-.notif-item{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;gap:9px;cursor:pointer;transition:background 0.15s;}
+.notif-item{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;gap:9px;cursor:pointer;transition:background 0.12s;align-items:center;}
 .notif-item:hover{background:var(--card-hov);}
 .notif-item:last-child{border-bottom:none;}
 .notif-item .ni-ico{font-size:15px;flex-shrink:0;}
-.notif-item .ni-msg{font-size:0.73rem;line-height:1.4;}
+.notif-item .ni-msg{font-size:0.73rem;line-height:1.4;flex:1;}
 .notif-item .ni-time{font-size:0.6rem;color:var(--text3);margin-top:2px;font-family:'JetBrains Mono',monospace;}
 .notif-item.unread{background:rgba(0,214,143,0.04);}
-
-/* ══ FOOTER / SIMBAR ══ */
+.notif-unread-dot{width:7px;height:7px;border-radius:50%;background:var(--em);flex-shrink:0;margin-left:auto;}
+.toast-container{position:fixed;top:70px;right:20px;z-index:9998;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:11px 16px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);min-width:260px;animation:toastin 0.25s cubic-bezier(0.34,1.56,0.64,1);}
+@keyframes toastin{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+.toast.fadeout{animation:toastout 0.25s ease forwards;}
+@keyframes toastout{to{opacity:0;transform:translateX(40px)}}
+.toast-icon{font-size:16px;flex-shrink:0;}
+.toast-msg{font-size:0.76rem;flex:1;}
+.toast-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;}
+.cmd-table{width:100%;border-collapse:collapse;font-size:0.72rem;}
+.cmd-table th{text-align:left;padding:7px 10px;color:var(--text3);font-size:0.62rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px solid var(--border);}
+.cmd-table td{padding:8px 10px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--text2);}
+.cmd-table tr:last-child td{border-bottom:none;}
+.cmd-status{display:inline-flex;padding:2px 7px;border-radius:4px;font-size:0.6rem;font-weight:600;}
+.cmd-status.pending{background:var(--amber-bg);color:var(--amber);}
+.cmd-status.executed{background:var(--em-bg);color:var(--em);}
+.cmd-status.failed{background:var(--red-bg);color:var(--red);}
+/* ── Settings status card ── */
+.sg-label{font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
 .footer{border-top:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:0.65rem;color:var(--text3);font-family:'JetBrains Mono',monospace;background:var(--bg2);}
 .sim-bar{background:var(--bg2);border-top:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
 .sim-lbl{font-size:0.63rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);}
-.sim-btn{background:var(--card);border:1px solid var(--border);color:var(--text2);padding:5px 11px;border-radius:6px;font-family:'Outfit',sans-serif;font-size:0.68rem;cursor:pointer;transition:all 0.15s;}
+.sim-btn{background:var(--card);border:1px solid var(--border);color:var(--text2);padding:5px 11px;border-radius:6px;font-family:'Outfit',sans-serif;font-size:0.68rem;cursor:pointer;transition:all 0.12s;}
 .sim-btn:hover{border-color:var(--em);color:var(--em);background:var(--em-bg);}
-
-/* ══ RESPONSIVE ══ */
 @media(max-width:900px){
   .sidebar{width:var(--sidebar-w-c);overflow:visible;}
   .sidebar .nav-label,.sidebar .nav-section,.sidebar .nav-badge,.sidebar .brand-text,.sidebar .sidebar-status .st{display:none;}
@@ -309,145 +320,161 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   .main-wrap{margin-left:var(--sidebar-w-c);}
   .grid-4{grid-template-columns:repeat(2,1fr);}
   .grid-3{grid-template-columns:1fr 1fr;}
+  .conn-status-row{grid-template-columns:1fr;}
 }
 @media(max-width:600px){
   .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
   .nb-search{display:none;}
   .page-content{padding:12px;}
+  .conn-status-row{grid-template-columns:1fr;}
 }
 </style>
 </head>
 <body>
-
 <div class="app-shell" id="appShell">
 
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-      <div class="brand-orb">&#x1F5D1;</div>
+      <div class="brand-orb">🗑</div>
       <div class="brand-text">
         <div class="b1">SmartBin IoT</div>
-        <div class="b2">Dashboard v1.0</div>
+        <div class="b2">Dashboard v2.1</div>
       </div>
-      <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M2 7h10M2 10h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       </button>
     </div>
     <div class="sidebar-status">
-      <div class="status-dot" id="sbarDot"></div>
-      <span class="st" id="sbarTxt">ESP32 ONLINE</span>
+      <div class="status-dot connecting" id="sbarDot"></div>
+      <span class="st connecting" id="sbarTxt">CONNECTING...</span>
     </div>
     <nav class="sidebar-nav">
       <div class="nav-section">Main</div>
-      <div class="nav-item active" data-label="Dashboard" onclick="goPage('dashboard',this)"><div class="nav-ico">&#x1F4CA;</div><span class="nav-label">Dashboard</span></div>
-      <div class="nav-item" data-label="Live Monitoring" onclick="goPage('monitor',this)"><div class="nav-ico">&#x1F4E1;</div><span class="nav-label">Live Monitoring</span></div>
-      <div class="nav-item" data-label="Analytics" onclick="goPage('analytics',this)"><div class="nav-ico">&#x1F4C8;</div><span class="nav-label">Analytics</span></div>
+      <div class="nav-item active" data-label="Dashboard" onclick="goPage('dashboard',this)"><div class="nav-ico">📊</div><span class="nav-label">Dashboard</span></div>
+      <div class="nav-item" data-label="Live Monitoring" onclick="goPage('monitor',this)"><div class="nav-ico">📡</div><span class="nav-label">Live Monitoring</span></div>
+      <div class="nav-item" data-label="Analytics" onclick="goPage('analytics',this)"><div class="nav-ico">📈</div><span class="nav-label">Analytics</span></div>
       <div class="nav-section">Hardware</div>
-      <div class="nav-item" data-label="Sensor Status" onclick="goPage('sensors',this)"><div class="nav-ico">&#x1F527;</div><span class="nav-label">Sensor Status</span></div>
-      <div class="nav-item" data-label="Activity Logs" onclick="goPage('logs',this)"><div class="nav-ico">&#x1F4CB;</div><span class="nav-label">Activity Logs</span></div>
-      <div class="nav-item" data-label="Notifications" onclick="goPage('notifications',this)"><div class="nav-ico">&#x1F514;</div><span class="nav-label">Notifications</span><span class="nav-badge" id="navBadge" style="display:none;">0</span></div>
-      <div class="nav-section">Integration</div>
-      <div class="nav-item" data-label="GAS Alerts" onclick="goPage('gas',this)"><div class="nav-ico">&#x1F4E7;</div><span class="nav-label">GAS Alerts</span></div>
-      <div class="nav-item" data-label="Supabase" onclick="goPage('supabase',this)"><div class="nav-ico">&#x1F5C4;</div><span class="nav-label">Supabase</span></div>
-      <div class="nav-item" data-label="Settings" onclick="goPage('settings',this)"><div class="nav-ico">&#x2699;&#xFE0F;</div><span class="nav-label">Settings</span></div>
+      <div class="nav-item" data-label="Remote Control" onclick="goPage('control',this)"><div class="nav-ico">🕹️</div><span class="nav-label">Remote Control</span></div>
+      <div class="nav-item" data-label="Sensor Status" onclick="goPage('sensors',this)"><div class="nav-ico">🔧</div><span class="nav-label">Sensor Status</span></div>
+      <div class="nav-item" data-label="Activity Logs" onclick="goPage('logs',this)"><div class="nav-ico">📋</div><span class="nav-label">Activity Logs</span></div>
+      <div class="nav-item" data-label="Notifications" onclick="goPage('notifications',this)"><div class="nav-ico">🔔</div><span class="nav-label">Notifications</span><span class="nav-badge" id="navBadge" style="display:none;">0</span></div>
+      <div class="nav-section">System</div>
+      <div class="nav-item" data-label="Settings" onclick="goPage('settings',this)"><div class="nav-ico">⚙️</div><span class="nav-label">Settings</span></div>
       <div class="nav-section">Export</div>
-      <div class="nav-item" data-label="Reports" onclick="goPage('reports',this)"><div class="nav-ico">&#x1F4C4;</div><span class="nav-label">Reports</span></div>
+      <div class="nav-item" data-label="Reports" onclick="goPage('reports',this)"><div class="nav-ico">📄</div><span class="nav-label">Reports</span></div>
     </nav>
   </aside>
 
-  <!-- MAIN WRAP -->
+  <!-- MAIN -->
   <div class="main-wrap" id="mainWrap">
-
-    <!-- NAVBAR -->
     <header class="navbar">
       <div class="nb-page-title" id="nbTitle">Dashboard <span>/ Overview</span></div>
       <div class="nb-search">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="5.5" cy="5.5" r="3.5" stroke="currentColor" stroke-width="1.2"/><path d="M8.5 8.5l2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-        <input type="text" placeholder="Search logs, sensors…" oninput="globalSearch(this.value)">
+        <input type="text" placeholder="Search logs..." oninput="globalSearch(this.value)">
       </div>
-      <div class="nb-clock" id="nbClock">—</div>
+      <div class="nb-clock" id="nbClock">--</div>
+      <div class="conn-pill connecting" id="sbPill"><div class="cp-dot"></div><span class="cp-label" id="sbPillTxt">SUPABASE...</span></div>
+      <div class="conn-pill offline" id="espPill"><div class="cp-dot"></div><span class="cp-label" id="espPillTxt">ESP32 OFFLINE</span></div>
       <div style="position:relative;">
-        <button class="nb-icon-btn" id="notifBtn" onclick="toggleNotif()">&#x1F514;<span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
+        <button class="nb-icon-btn" id="notifBtn" onclick="toggleNotif()">🔔<span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
         <div class="notif-panel" id="notifPanel" style="display:none;">
           <div class="notif-head"><span class="nh-title">Notifications</span><button class="notif-mark" onclick="markAllRead()">Mark all read</button></div>
           <div class="notif-list" id="notifList"></div>
         </div>
       </div>
-      <button class="nb-icon-btn" onclick="toggleTheme()" title="Toggle theme" id="themeBtn">&#x1F319;</button>
-      <div id="gasNavIndicator" title="GAS Email Relay" style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:var(--em-bg);border:1px solid rgba(0,214,143,0.2);border-radius:8px;cursor:pointer;" onclick="goPage('gas',document.querySelector('.nav-item[data-label=\'GAS Alerts\']'))">
-        <div class="status-dot" id="gasNavDot" style="background:var(--text3);box-shadow:none;animation:none;"></div>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--text2);" id="gasNavTxt">GAS</span>
-      </div>
+      <button class="nb-icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
     </header>
 
-    <!-- PAGES -->
     <div class="page-content">
 
       <!-- DASHBOARD -->
       <div class="page active" id="page-dashboard">
+        <div class="conn-status-row">
+          <div class="conn-banner sb-connecting" id="sbBanner">
+            <div class="cb-icon">🗄</div>
+            <div class="cb-body"><div class="cb-title">Supabase Database</div><div class="cb-sub" id="sbBannerSub">Connecting to database...</div></div>
+            <div class="cb-badge"><div class="cb-pulse" id="sbBannerPulse"></div><span id="sbBannerBadge">CONNECTING</span></div>
+          </div>
+          <div class="conn-banner esp-offline" id="espBanner">
+            <div class="cb-icon">📡</div>
+            <div class="cb-body"><div class="cb-title">ESP32 Device</div><div class="cb-sub" id="espBannerSub">Checking device heartbeat...</div></div>
+            <div class="cb-badge"><div class="cb-pulse" id="espBannerPulse"></div><span id="espBannerBadge">OFFLINE</span></div>
+          </div>
+        </div>
         <div class="sec-head">
-          <div><div class="sec-title">System Overview</div><div class="sec-subtitle">Real-time monitoring across all SmartBin components</div></div>
-          <div class="btn em" onclick="resetAll()">&#x21BA; Reset All</div>
+          <div><div class="sec-title">System Overview</div><div class="sec-subtitle">Live from Supabase · <span id="lastSyncLabel" style="color:var(--em);font-family:'JetBrains Mono',monospace;font-size:0.65rem;">--</span></div></div>
+          <div class="btn em" onclick="resetAll()">↺ Reset All</div>
         </div>
         <div class="grid-4" style="margin-bottom:14px;">
-          <div class="stat-card"><div class="stat-card-top"><div class="stat-ico" style="background:var(--em-bg);">&#x1F5D1;</div><span class="stat-trend neu" id="sc-cap-tr">— %</span></div><div class="stat-val" id="sc-cap">0%</div><div class="stat-label">Avg Bin Capacity</div><div class="ring-wrap"><svg width="60" height="60"><circle class="ring-track" cx="30" cy="30" r="24"/><circle class="ring-fill" id="ring-cap" cx="30" cy="30" r="24" stroke="var(--em)" stroke-dasharray="150.8" stroke-dashoffset="150.8"/></svg><div class="ring-pct" id="ring-cap-pct" style="color:var(--em);">0%</div></div></div>
-          <div class="stat-card"><div class="stat-card-top"><div class="stat-ico" style="background:var(--em-bg);">&#x1F33F;</div><span class="stat-trend" id="sc-bio-tr">OK</span></div><div class="stat-val" id="sc-bio">0%</div><div class="stat-label">Bio Bin Level</div><div class="ring-wrap"><svg width="60" height="60"><circle class="ring-track" cx="30" cy="30" r="24"/><circle class="ring-fill" id="ring-bio" cx="30" cy="30" r="24" stroke="var(--em)" stroke-dasharray="150.8" stroke-dashoffset="150.8"/></svg><div class="ring-pct" id="ring-bio-pct" style="color:var(--em);">0%</div></div></div>
-          <div class="stat-card"><div class="stat-card-top"><div class="stat-ico" style="background:var(--blue-bg);">&#x267B;&#xFE0F;</div><span class="stat-trend" id="sc-nb-tr">OK</span></div><div class="stat-val" id="sc-nb">0%</div><div class="stat-label">Non-Bio Bin Level</div><div class="ring-wrap"><svg width="60" height="60"><circle class="ring-track" cx="30" cy="30" r="24"/><circle class="ring-fill" id="ring-nb" cx="30" cy="30" r="24" stroke="var(--blue)" stroke-dasharray="150.8" stroke-dashoffset="150.8"/></svg><div class="ring-pct" id="ring-nb-pct" style="color:var(--blue);">0%</div></div></div>
-          <div class="stat-card"><div class="stat-card-top"><div class="stat-ico" style="background:var(--blue-bg);">&#x1F50C;</div><span class="stat-trend up">LIVE</span></div><div class="stat-val" id="sc-sensors">7/7</div><div class="stat-label">Active Sensors</div><div class="ring-wrap"><svg width="60" height="60"><circle class="ring-track" cx="30" cy="30" r="24"/><circle class="ring-fill" id="ring-sen" cx="30" cy="30" r="24" stroke="var(--blue)" stroke-dasharray="150.8" stroke-dashoffset="0"/></svg><div class="ring-pct" style="color:var(--blue);">100%</div></div></div>
+          <div class="stat-card"><div class="stat-card-top"><div class="stat-ico" style="background:var(--em-bg);">🗑</div><span class="stat-trend neu" id="sc-cap-tr">--</span></div><div class="stat-val" id="sc-cap">0%</div><div class="stat-label">Avg Bin Capacity</div><div class="ring-wrap"><svg width="60" height="60"><circle class="ring-track" cx="30" cy="30" r="24"/><circle class="ring-fill" id="ring-cap" cx="30" cy="30" r="24" stroke="var(--em)" stroke-dasharray="150.8" stroke-dashoffset="150.8"/></svg><div class="ring-pct" id="ring-cap-pct" style="color:var(--em);">0%</div></div></div>
+          <div class="stat-card"><div class="stat-card-top"><div class="stat-ico" style="background:var(--em-bg);">🌿</div><span class="stat-trend up" id="sc-bio-tr">OK</span></div><div class="stat-val" id="sc-bio">0%</div><div class="stat-label">Bio Bin Level</div><div class="ring-wrap"><svg width="60" height="60"><circle class="ring-track" cx="30" cy="30" r="24"/><circle class="ring-fill" id="ring-bio" cx="30" cy="30" r="24" stroke="var(--em)" stroke-dasharray="150.8" stroke-dashoffset="150.8"/></svg><div class="ring-pct" id="ring-bio-pct" style="color:var(--em);">0%</div></div></div>
+          <div class="stat-card"><div class="stat-card-top"><div class="stat-ico" style="background:var(--blue-bg);">♻️</div><span class="stat-trend up" id="sc-nb-tr">OK</span></div><div class="stat-val" id="sc-nb">0%</div><div class="stat-label">Non-Bio Bin Level</div><div class="ring-wrap"><svg width="60" height="60"><circle class="ring-track" cx="30" cy="30" r="24"/><circle class="ring-fill" id="ring-nb" cx="30" cy="30" r="24" stroke="var(--blue)" stroke-dasharray="150.8" stroke-dashoffset="150.8"/></svg><div class="ring-pct" id="ring-nb-pct" style="color:var(--blue);">0%</div></div></div>
+          <div class="stat-card"><div class="stat-card-top"><div class="stat-ico" style="background:var(--blue-bg);">🔌</div><span class="stat-trend up" id="sc-esp-badge">CHECKING</span></div><div class="stat-val" id="sc-esp-val" style="font-size:1.1rem;">--</div><div class="stat-label">ESP32 Status</div><div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--text3);" id="sc-esp-seen">Last seen: --</div></div>
         </div>
         <div class="grid-4" style="margin-bottom:20px;">
-          <div class="stat-card card-sm"><div style="display:flex;align-items:center;gap:9px;"><div class="stat-ico" style="background:var(--amber-bg);width:32px;height:32px;border-radius:8px;font-size:15px;">&#x2699;&#xFE0F;</div><div><div class="stat-label">Servo Status</div><div style="font-size:0.82rem;font-weight:600;font-family:'JetBrains Mono',monospace;" id="sc-servo">2x CLOSED</div></div></div></div>
-          <div class="stat-card card-sm"><div style="display:flex;align-items:center;gap:9px;"><div class="stat-ico" style="background:var(--em-bg);width:32px;height:32px;border-radius:8px;font-size:15px;">&#x1F550;</div><div><div class="stat-label">Last Disposal</div><div style="font-size:0.78rem;font-weight:600;font-family:'JetBrains Mono',monospace;" id="sc-disposal">—</div></div></div></div>
-          <div class="stat-card card-sm"><div style="display:flex;align-items:center;gap:9px;"><div class="stat-ico" style="background:var(--em-bg);width:32px;height:32px;border-radius:8px;font-size:15px;">&#x1F310;</div><div><div class="stat-label">Internet Status</div><div style="font-size:0.78rem;font-weight:600;color:var(--em);font-family:'JetBrains Mono',monospace;">CONNECTED</div></div></div></div>
-          <div class="stat-card card-sm"><div style="display:flex;align-items:center;gap:9px;"><div class="stat-ico" style="background:var(--em-bg);width:32px;height:32px;border-radius:8px;font-size:15px;">&#x1F4E7;</div><div><div class="stat-label">GAS Email Relay</div><div style="font-size:0.78rem;font-weight:600;font-family:'JetBrains Mono',monospace;" id="sc-gas-status">NOT CONFIGURED</div></div></div></div>
+          <div class="stat-card card-sm"><div style="display:flex;align-items:center;gap:9px;"><div class="stat-ico" style="background:var(--amber-bg);width:32px;height:32px;border-radius:8px;font-size:15px;">⚙️</div><div><div class="stat-label">Servo Status</div><div style="font-size:0.82rem;font-weight:600;font-family:'JetBrains Mono',monospace;" id="sc-servo">2x CLOSED</div></div></div></div>
+          <div class="stat-card card-sm"><div style="display:flex;align-items:center;gap:9px;"><div class="stat-ico" style="background:var(--em-bg);width:32px;height:32px;border-radius:8px;font-size:15px;">🕐</div><div><div class="stat-label">Last Disposal</div><div style="font-size:0.78rem;font-weight:600;font-family:'JetBrains Mono',monospace;" id="sc-disposal">--</div></div></div></div>
+          <div class="stat-card card-sm"><div style="display:flex;align-items:center;gap:9px;"><div class="stat-ico" style="background:var(--em-bg);width:32px;height:32px;border-radius:8px;font-size:15px;">🗄</div><div><div class="stat-label">Supabase</div><div style="font-size:0.78rem;font-weight:600;font-family:'JetBrains Mono',monospace;" id="sc-sb-status">CONNECTING</div></div></div></div>
+          <div class="stat-card card-sm"><div style="display:flex;align-items:center;gap:9px;"><div class="stat-ico" style="background:var(--blue-bg);width:32px;height:32px;border-radius:8px;font-size:15px;">⏱</div><div><div class="stat-label">Realtime</div><div style="font-size:0.78rem;font-weight:600;font-family:'JetBrains Mono',monospace;" id="sc-rt-status">NOT STARTED</div></div></div></div>
         </div>
         <div class="sec-head"><div class="sec-title">Bin Containers</div></div>
         <div class="grid-2">
           <!-- BIO BIN -->
           <div class="bin-panel">
-            <div class="bin-head"><div class="bin-label"><div class="bin-type-ico bio">&#x1F33F;</div><div><div class="bin-name">Biodegradable</div><div class="bin-sub">Organic waste · ESP32 Port A</div></div></div><div class="led-strip"><div class="led-dot g" id="bioLed1"></div><div class="led-dot g" id="bioLed2"></div><span class="led-label" id="bioLedLbl">HAS SPACE</span></div></div>
+            <div class="bin-head"><div class="bin-label"><div class="bin-type-ico bio">🌿</div><div><div class="bin-name">Biodegradable</div><div class="bin-sub">Organic waste · VL53L0X 0x30</div></div></div><div class="led-strip"><div class="led-dot g" id="bioLed1"></div><div class="led-dot g" id="bioLed2"></div><span class="led-label" id="bioLedLbl">HAS SPACE</span></div></div>
             <div class="bin-visual"><div class="bin-svg-wrap">
               <div class="radar-ring off" id="bioRadar1"></div><div class="radar-ring off" id="bioRadar2"></div><div class="radar-ring off" id="bioRadar3"></div>
-              <svg id="bioSvg" width="150" height="185" viewBox="0 0 150 185" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="bc"><rect x="15" y="52" width="120" height="120" rx="8"/></clipPath></defs><rect x="15" y="52" width="120" height="120" rx="8" fill="var(--bg3)" stroke="var(--border2)" stroke-width="1.5"/><g clip-path="url(#bc)"><rect id="bz0" x="15" y="130" width="120" height="42" fill="transparent" style="transition:fill 0.5s;"/><rect id="bz1" x="15" y="100" width="120" height="30" fill="transparent" style="transition:fill 0.5s;"/><rect id="bz2" x="15" y="52" width="120" height="48" fill="transparent" style="transition:fill 0.5s;"/></g><line x1="15" y1="100" x2="135" y2="100" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/><line x1="15" y1="130" x2="135" y2="130" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/><text x="137" y="103" font-size="6" fill="var(--text3)" font-family="JetBrains Mono,monospace">75%</text><text x="137" y="133" font-size="6" fill="var(--text3)" font-family="JetBrains Mono,monospace">25%</text><rect x="15" y="52" width="120" height="120" rx="8" fill="none" stroke="var(--border2)" stroke-width="1.5"/><rect x="8" y="168" width="134" height="8" rx="4" fill="var(--border2)"/><g id="bioLid" style="transform-origin:75px 53px;transition:transform 0.5s cubic-bezier(0.34,1.2,0.64,1);"><rect x="8" y="38" width="134" height="16" rx="6" fill="#1a3d2b" stroke="var(--em-dim)" stroke-width="1"/><rect x="55" y="32" width="40" height="8" rx="4" fill="#0f2a1a"/><rect x="50" y="32" width="8" height="4" rx="1" fill="var(--em)" opacity="0.5"/><rect x="92" y="32" width="8" height="4" rx="1" fill="var(--em)" opacity="0.5"/></g></svg>
+              <svg width="150" height="185" viewBox="0 0 150 185" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="bc"><rect x="15" y="52" width="120" height="120" rx="8"/></clipPath></defs><rect x="15" y="52" width="120" height="120" rx="8" fill="var(--bg3)" stroke="var(--border2)" stroke-width="1.5"/><g clip-path="url(#bc)"><rect id="bz0" x="15" y="130" width="120" height="42" fill="transparent" style="transition:fill 0.4s;"/><rect id="bz1" x="15" y="100" width="120" height="30" fill="transparent" style="transition:fill 0.4s;"/><rect id="bz2" x="15" y="52" width="120" height="48" fill="transparent" style="transition:fill 0.4s;"/></g><line x1="15" y1="100" x2="135" y2="100" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/><line x1="15" y1="130" x2="135" y2="130" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/><text x="137" y="103" font-size="6" fill="var(--text3)" font-family="JetBrains Mono,monospace">75%</text><text x="137" y="133" font-size="6" fill="var(--text3)" font-family="JetBrains Mono,monospace">25%</text><rect x="15" y="52" width="120" height="120" rx="8" fill="none" stroke="var(--border2)" stroke-width="1.5"/><rect x="8" y="168" width="134" height="8" rx="4" fill="var(--border2)"/><g id="bioLid" style="transform-origin:75px 53px;transition:transform 0.4s cubic-bezier(0.34,1.2,0.64,1);"><rect x="8" y="38" width="134" height="16" rx="6" fill="#1a3d2b" stroke="var(--em-dim)" stroke-width="1"/><rect x="55" y="32" width="40" height="8" rx="4" fill="#0f2a1a"/></g></svg>
             </div></div>
             <div class="fill-section"><div class="fill-header"><span class="fill-lbl">Fill Level · VL53L0X Laser</span><span class="fill-pct ok" id="bioNum">0%</span></div><div class="fill-track"><div class="fill-bar ok" id="bioFill" style="width:0%;"></div></div><div class="fill-ticks"><span>0</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div>
-            <div class="chip-row"><div class="chip">&#x1F4E1; Ultrasonic <span class="cv g" id="bioUS">IDLE</span></div><div class="chip">&#x2699;&#xFE0F; Servo <span class="cv g" id="bioSrv">CLOSED</span></div><div class="chip">&#x1F5C3; Items <span class="cv b" id="bioCnt">0</span></div><div class="chip">&#x1F4CF; VL53L0X <span class="cv" id="bioMM">400 mm</span></div></div>
-            <div class="alert-strip" id="bioAlert">&#x1F6A8; Biodegradable bin is FULL — Email alert sent via GAS</div>
-            <div class="btn-row"><div class="btn em" onclick="approach('bio')">&#x1F4E1; Simulate User</div><div class="btn amber" onclick="dispose('bio')" id="bioDisposeBtn" style="display:none;">&#x1F5D1; Dispose</div></div>
+            <div class="chip-row"><div class="chip">📡 Ultrasonic <span class="cv g" id="bioUS">IDLE</span></div><div class="chip">⚙️ Servo <span class="cv g" id="bioSrv">CLOSED</span></div><div class="chip">🗃 Items <span class="cv b" id="bioCnt">0</span></div><div class="chip">📏 VL53L0X <span class="cv" id="bioMM">-- mm</span></div></div>
+            <div class="alert-strip" id="bioAlert">🚨 Biodegradable bin is FULL — Please dispose immediately</div>
+            <div class="btn-row">
+              <div class="btn em" onclick="sendCommand('open_bio_lid')">📡 Open Lid</div>
+              <div class="btn" onclick="sendCommand('close_bio_lid')">⚙️ Close Lid</div>
+              <div class="btn amber" onclick="dispose('bio')" id="bioDisposeBtn" style="display:none;">🗑 Dispose</div>
+            </div>
           </div>
           <!-- NON-BIO BIN -->
           <div class="bin-panel">
-            <div class="bin-head"><div class="bin-label"><div class="bin-type-ico nonbio">&#x267B;&#xFE0F;</div><div><div class="bin-name">Non-Biodegradable</div><div class="bin-sub">Recyclable waste · ESP32 Port B</div></div></div><div class="led-strip"><div class="led-dot g" id="nbLed1"></div><div class="led-dot g" id="nbLed2"></div><span class="led-label" id="nbLedLbl">HAS SPACE</span></div></div>
+            <div class="bin-head"><div class="bin-label"><div class="bin-type-ico nonbio">♻️</div><div><div class="bin-name">Non-Biodegradable</div><div class="bin-sub">Recyclable waste · VL53L0X 0x31</div></div></div><div class="led-strip"><div class="led-dot g" id="nbLed1"></div><div class="led-dot g" id="nbLed2"></div><span class="led-label" id="nbLedLbl">HAS SPACE</span></div></div>
             <div class="bin-visual"><div class="bin-svg-wrap">
               <div class="radar-ring off" id="nbRadar1"></div><div class="radar-ring off" id="nbRadar2"></div><div class="radar-ring off" id="nbRadar3"></div>
-              <svg id="nbSvg" width="150" height="185" viewBox="0 0 150 185" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="nc"><rect x="15" y="52" width="120" height="120" rx="8"/></clipPath></defs><rect x="15" y="52" width="120" height="120" rx="8" fill="var(--bg3)" stroke="var(--border2)" stroke-width="1.5"/><g clip-path="url(#nc)"><rect id="nz0" x="15" y="130" width="120" height="42" fill="transparent" style="transition:fill 0.5s;"/><rect id="nz1" x="15" y="100" width="120" height="30" fill="transparent" style="transition:fill 0.5s;"/><rect id="nz2" x="15" y="52" width="120" height="48" fill="transparent" style="transition:fill 0.5s;"/></g><line x1="15" y1="100" x2="135" y2="100" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/><line x1="15" y1="130" x2="135" y2="130" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/><text x="137" y="103" font-size="6" fill="var(--text3)" font-family="JetBrains Mono,monospace">75%</text><text x="137" y="133" font-size="6" fill="var(--text3)" font-family="JetBrains Mono,monospace">25%</text><rect x="15" y="52" width="120" height="120" rx="8" fill="none" stroke="var(--border2)" stroke-width="1.5"/><rect x="8" y="168" width="134" height="8" rx="4" fill="var(--border2)"/><g id="nbLid" style="transform-origin:75px 53px;transition:transform 0.5s cubic-bezier(0.34,1.2,0.64,1);"><rect x="8" y="38" width="134" height="16" rx="6" fill="#1a2a3d" stroke="#3b82f6" stroke-width="1" opacity="0.8"/><rect x="55" y="32" width="40" height="8" rx="4" fill="#0f1a2a"/><rect x="50" y="32" width="8" height="4" rx="1" fill="var(--blue)" opacity="0.5"/><rect x="92" y="32" width="8" height="4" rx="1" fill="var(--blue)" opacity="0.5"/></g></svg>
+              <svg width="150" height="185" viewBox="0 0 150 185" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="nc"><rect x="15" y="52" width="120" height="120" rx="8"/></clipPath></defs><rect x="15" y="52" width="120" height="120" rx="8" fill="var(--bg3)" stroke="var(--border2)" stroke-width="1.5"/><g clip-path="url(#nc)"><rect id="nz0" x="15" y="130" width="120" height="42" fill="transparent" style="transition:fill 0.4s;"/><rect id="nz1" x="15" y="100" width="120" height="30" fill="transparent" style="transition:fill 0.4s;"/><rect id="nz2" x="15" y="52" width="120" height="48" fill="transparent" style="transition:fill 0.4s;"/></g><line x1="15" y1="100" x2="135" y2="100" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/><line x1="15" y1="130" x2="135" y2="130" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/><text x="137" y="103" font-size="6" fill="var(--text3)" font-family="JetBrains Mono,monospace">75%</text><text x="137" y="133" font-size="6" fill="var(--text3)" font-family="JetBrains Mono,monospace">25%</text><rect x="15" y="52" width="120" height="120" rx="8" fill="none" stroke="var(--border2)" stroke-width="1.5"/><rect x="8" y="168" width="134" height="8" rx="4" fill="var(--border2)"/><g id="nbLid" style="transform-origin:75px 53px;transition:transform 0.4s cubic-bezier(0.34,1.2,0.64,1);"><rect x="8" y="38" width="134" height="16" rx="6" fill="#1a2a3d" stroke="#3b82f6" stroke-width="1" opacity="0.8"/><rect x="55" y="32" width="40" height="8" rx="4" fill="#0f1a2a"/></g></svg>
             </div></div>
             <div class="fill-section"><div class="fill-header"><span class="fill-lbl">Fill Level · VL53L0X Laser</span><span class="fill-pct ok" id="nbNum">0%</span></div><div class="fill-track"><div class="fill-bar ok" id="nbFill" style="width:0%;"></div></div><div class="fill-ticks"><span>0</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div>
-            <div class="chip-row"><div class="chip">&#x1F4E1; Ultrasonic <span class="cv b" id="nbUS">IDLE</span></div><div class="chip">&#x2699;&#xFE0F; Servo <span class="cv b" id="nbSrv">CLOSED</span></div><div class="chip">&#x1F5C3; Items <span class="cv b" id="nbCnt">0</span></div><div class="chip">&#x1F4CF; VL53L0X <span class="cv" id="nbMM">400 mm</span></div></div>
-            <div class="alert-strip" id="nbAlert">&#x1F6A8; Non-biodegradable bin is FULL — Email alert sent via GAS</div>
-            <div class="btn-row"><div class="btn blue" onclick="approach('nonbio')">&#x1F4E1; Simulate User</div><div class="btn amber" onclick="dispose('nonbio')" id="nbDisposeBtn" style="display:none;">&#x1F5D1; Dispose</div></div>
+            <div class="chip-row"><div class="chip">📡 Ultrasonic <span class="cv b" id="nbUS">IDLE</span></div><div class="chip">⚙️ Servo <span class="cv b" id="nbSrv">CLOSED</span></div><div class="chip">🗃 Items <span class="cv b" id="nbCnt">0</span></div><div class="chip">📏 VL53L0X <span class="cv" id="nbMM">-- mm</span></div></div>
+            <div class="alert-strip" id="nbAlert">🚨 Non-biodegradable bin is FULL — Please dispose immediately</div>
+            <div class="btn-row">
+              <div class="btn blue" onclick="sendCommand('open_nb_lid')">📡 Open Lid</div>
+              <div class="btn" onclick="sendCommand('close_nb_lid')">⚙️ Close Lid</div>
+              <div class="btn amber" onclick="dispose('nonbio')" id="nbDisposeBtn" style="display:none;">🗑 Dispose</div>
+            </div>
           </div>
         </div>
         <div class="gap"></div>
         <div class="grid-3">
           <div class="card">
             <div class="sec-title" style="margin-bottom:10px;">OLED Display Simulation</div>
-            <div class="oled-wrap" id="oledScreen"><div class="oled-line">SmartBin IoT v1.0</div><div class="oled-line dim">-------------------</div><div class="oled-line" id="ol1">BIO:    000%  [OK]</div><div class="oled-line" id="ol2">NONBIO: 000%  [OK]</div><div class="oled-line dim">-------------------</div><div class="oled-line" id="ol3">STATUS: ALL CLEAR</div><div class="oled-line dim">ESP32 UPTIME: <span id="uptime">00:00:00</span></div><div class="oled-line">&gt; <span class="oled-cursor"></span></div></div>
-            <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;"><div style="display:flex;align-items:center;gap:8px;"><span>&#x1F514;</span><div><div style="font-size:0.75rem;font-weight:500;">Buzzer</div><div style="font-size:0.6rem;color:var(--text2);">Audio alert on full</div></div></div><div class="s-badge idle" id="buzzerBadge">SILENT</div></div>
+            <div class="oled-wrap"><div class="oled-line">SmartBin IoT v2.1</div><div class="oled-line dim">-------------------</div><div class="oled-line" id="ol1">BIO:    000%  [OK]</div><div class="oled-line" id="ol2">NONBIO: 000%  [OK]</div><div class="oled-line dim">-------------------</div><div class="oled-line" id="ol3">STATUS: ALL CLEAR</div><div class="oled-line dim">UPTIME: <span id="uptime">00:00:00</span></div><div class="oled-line">&gt; <span class="oled-cursor"></span></div></div>
+            <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;"><div style="display:flex;align-items:center;gap:8px;"><span>🔔</span><div><div style="font-size:0.75rem;font-weight:500;">Buzzer</div><div style="font-size:0.6rem;color:var(--text2);">Audio alert on full</div></div></div><div class="s-badge idle" id="buzzerBadge">SILENT</div></div>
           </div>
           <div class="card">
             <div class="sec-title" style="margin-bottom:10px;">Hardware Status</div>
             <div style="display:flex;flex-direction:column;gap:6px;">
-              <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4E1;</span><div class="s-info"><div class="s-name">ESP32 DevKit V1</div><div class="s-desc">Main MCU</div></div></div><div class="s-right"><div class="s-badge online">&#x25CF; ONLINE</div></div></div>
-              <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F50A;</span><div class="s-info"><div class="s-name">Ultrasonic — Bio</div></div></div><div class="s-right"><div class="s-badge idle" id="hw_us_bio">IDLE</div></div></div>
-              <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F50A;</span><div class="s-info"><div class="s-name">Ultrasonic — NonBio</div></div></div><div class="s-right"><div class="s-badge idle" id="hw_us_nb">IDLE</div></div></div>
-              <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4CF;</span><div class="s-info"><div class="s-name">VL53L0X — Bio</div></div></div><div class="s-right"><div class="s-badge active" id="hw_vl_bio" style="font-size:0.6rem;">400 mm</div></div></div>
-              <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4CF;</span><div class="s-info"><div class="s-name">VL53L0X — NonBio</div></div></div><div class="s-right"><div class="s-badge active" id="hw_vl_nb" style="font-size:0.6rem;">400 mm</div></div></div>
-              <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x2699;&#xFE0F;</span><div class="s-info"><div class="s-name">Servo Motors x2</div></div></div><div class="s-right"><div class="s-badge idle" id="hw_srv">2x CLSD</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">📡</span><div class="s-info"><div class="s-name">ESP32 DevKit V1</div><div class="s-desc">Main MCU</div></div></div><div class="s-right"><div class="s-badge offline" id="hw_esp32">OFFLINE</div><div class="s-time" id="hw_esp_seen">--</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">🗄</span><div class="s-info"><div class="s-name">Supabase Database</div><div class="s-desc" id="hw_sb_url">Waiting for connection</div></div></div><div class="s-right"><div class="s-badge connecting" id="hw_sb">CONNECTING</div><div class="s-time" id="hw_sb_ping">--</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">🔊</span><div class="s-info"><div class="s-name">Ultrasonic — Bio</div></div></div><div class="s-right"><div class="s-badge idle" id="hw_us_bio">IDLE</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">🔊</span><div class="s-info"><div class="s-name">Ultrasonic — NonBio</div></div></div><div class="s-right"><div class="s-badge idle" id="hw_us_nb">IDLE</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">📏</span><div class="s-info"><div class="s-name">VL53L0X — Bio (0x30)</div></div></div><div class="s-right"><div class="s-badge active" id="hw_vl_bio" style="font-size:0.6rem;">-- mm</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">📏</span><div class="s-info"><div class="s-name">VL53L0X — NonBio (0x31)</div></div></div><div class="s-right"><div class="s-badge active" id="hw_vl_nb" style="font-size:0.6rem;">-- mm</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">⚙️</span><div class="s-info"><div class="s-name">Servo Motors x2</div></div></div><div class="s-right"><div class="s-badge idle" id="hw_srv">2x CLSD</div></div></div>
             </div>
           </div>
           <div class="card" style="display:flex;flex-direction:column;gap:10px;">
-            <div class="sec-head" style="margin-bottom:0;"><div class="sec-title">Activity Log</div><button class="btn" style="padding:4px 10px;font-size:0.67rem;" onclick="exportCSV()">&#x2B07; CSV</button></div>
+            <div class="sec-head" style="margin-bottom:0;"><div class="sec-title">Activity Log</div><button class="btn" style="padding:4px 10px;font-size:0.67rem;" onclick="exportCSV()">↓ CSV</button></div>
             <div class="log-feed" id="logFeed" style="max-height:320px;"></div>
           </div>
         </div>
@@ -455,28 +482,28 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
       <!-- LIVE MONITORING -->
       <div class="page" id="page-monitor">
-        <div class="sec-head"><div><div class="sec-title">Live Monitoring</div><div class="sec-subtitle">Real-time sensor data streams</div></div></div>
+        <div class="sec-head"><div><div class="sec-title">Live Monitoring</div><div class="sec-subtitle">Real-time sensor data — polling every 3s from Supabase</div></div></div>
         <div class="grid-2" style="margin-bottom:16px;">
           <div class="card"><div class="sec-title" style="margin-bottom:12px;">Bio Bin · Live Feed</div><div style="display:flex;flex-direction:column;gap:8px;">
-            <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4CF;</span><div class="s-info"><div class="s-name">VL53L0X Distance</div></div></div><div class="s-right"><div class="s-badge active" id="m_vl_bio">400 mm</div></div></div>
-            <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4CA;</span><div class="s-info"><div class="s-name">Fill Percentage</div></div></div><div class="s-right"><div class="s-badge" id="m_pct_bio" style="background:var(--em-bg);color:var(--em);">0%</div></div></div>
-            <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F50A;</span><div class="s-info"><div class="s-name">Ultrasonic State</div></div></div><div class="s-right"><div class="s-badge idle" id="m_us_bio">IDLE</div></div></div>
-            <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x2699;&#xFE0F;</span><div class="s-info"><div class="s-name">Servo Position</div></div></div><div class="s-right"><div class="s-badge idle" id="m_srv_bio">CLOSED</div></div></div>
-            <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4A1;</span><div class="s-info"><div class="s-name">LED State</div></div></div><div class="s-right"><div class="s-badge online" id="m_led_bio">2x GREEN</div></div></div>
+            <div class="sensor-item"><div class="s-left"><span class="s-ico">📏</span><div class="s-info"><div class="s-name">VL53L0X Distance</div></div></div><div class="s-right"><div class="s-badge active" id="m_vl_bio">-- mm</div></div></div>
+            <div class="sensor-item"><div class="s-left"><span class="s-ico">📊</span><div class="s-info"><div class="s-name">Fill Percentage</div></div></div><div class="s-right"><div class="s-badge" id="m_pct_bio" style="background:var(--em-bg);color:var(--em);">0%</div></div></div>
+            <div class="sensor-item"><div class="s-left"><span class="s-ico">🔊</span><div class="s-info"><div class="s-name">Ultrasonic State</div></div></div><div class="s-right"><div class="s-badge idle" id="m_us_bio">IDLE</div></div></div>
+            <div class="sensor-item"><div class="s-left"><span class="s-ico">⚙️</span><div class="s-info"><div class="s-name">Servo Position</div></div></div><div class="s-right"><div class="s-badge idle" id="m_srv_bio">CLOSED</div></div></div>
+            <div class="sensor-item"><div class="s-left"><span class="s-ico">💡</span><div class="s-info"><div class="s-name">LED State</div></div></div><div class="s-right"><div class="s-badge online" id="m_led_bio">2x GREEN</div></div></div>
           </div></div>
           <div class="card"><div class="sec-title" style="margin-bottom:12px;">Non-Bio Bin · Live Feed</div><div style="display:flex;flex-direction:column;gap:8px;">
-            <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4CF;</span><div class="s-info"><div class="s-name">VL53L0X Distance</div></div></div><div class="s-right"><div class="s-badge active" id="m_vl_nb">400 mm</div></div></div>
-            <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4CA;</span><div class="s-info"><div class="s-name">Fill Percentage</div></div></div><div class="s-right"><div class="s-badge" id="m_pct_nb" style="background:var(--blue-bg);color:var(--blue);">0%</div></div></div>
-            <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F50A;</span><div class="s-info"><div class="s-name">Ultrasonic State</div></div></div><div class="s-right"><div class="s-badge idle" id="m_us_nb">IDLE</div></div></div>
-            <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x2699;&#xFE0F;</span><div class="s-info"><div class="s-name">Servo Position</div></div></div><div class="s-right"><div class="s-badge idle" id="m_srv_nb">CLOSED</div></div></div>
-            <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4A1;</span><div class="s-info"><div class="s-name">LED State</div></div></div><div class="s-right"><div class="s-badge online" id="m_led_nb">2x GREEN</div></div></div>
+            <div class="sensor-item"><div class="s-left"><span class="s-ico">📏</span><div class="s-info"><div class="s-name">VL53L0X Distance</div></div></div><div class="s-right"><div class="s-badge active" id="m_vl_nb">-- mm</div></div></div>
+            <div class="sensor-item"><div class="s-left"><span class="s-ico">📊</span><div class="s-info"><div class="s-name">Fill Percentage</div></div></div><div class="s-right"><div class="s-badge" id="m_pct_nb" style="background:var(--blue-bg);color:var(--blue);">0%</div></div></div>
+            <div class="sensor-item"><div class="s-left"><span class="s-ico">🔊</span><div class="s-info"><div class="s-name">Ultrasonic State</div></div></div><div class="s-right"><div class="s-badge idle" id="m_us_nb">IDLE</div></div></div>
+            <div class="sensor-item"><div class="s-left"><span class="s-ico">⚙️</span><div class="s-info"><div class="s-name">Servo Position</div></div></div><div class="s-right"><div class="s-badge idle" id="m_srv_nb">CLOSED</div></div></div>
+            <div class="sensor-item"><div class="s-left"><span class="s-ico">💡</span><div class="s-info"><div class="s-name">LED State</div></div></div><div class="s-right"><div class="s-badge online" id="m_led_nb">2x GREEN</div></div></div>
           </div></div>
         </div>
         <div class="card"><div class="sec-title" style="margin-bottom:12px;">System-Wide Status</div><div class="grid-4">
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4E1;</span><div class="s-info"><div class="s-name">ESP32 MCU</div></div></div><div class="s-right"><div class="s-badge online">ONLINE</div></div></div>
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F5C4;</span><div class="s-info"><div class="s-name">Supabase</div></div></div><div class="s-right"><div class="s-badge online" id="m_db">SYNCED</div></div></div>
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F514;</span><div class="s-info"><div class="s-name">Buzzer</div></div></div><div class="s-right"><div class="s-badge idle" id="m_buzzer">SILENT</div></div></div>
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4E7;</span><div class="s-info"><div class="s-name">GAS Email Relay</div></div></div><div class="s-right"><div class="s-badge idle" id="m_gas">NOT SET</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">📡</span><div class="s-info"><div class="s-name">ESP32 MCU</div></div></div><div class="s-right"><div class="s-badge offline" id="m_esp32">OFFLINE</div><div class="s-time" id="m_esp32_seen">--</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">🗄</span><div class="s-info"><div class="s-name">Supabase DB</div></div></div><div class="s-right"><div class="s-badge connecting" id="m_db">CONNECTING</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">📶</span><div class="s-info"><div class="s-name">Realtime</div></div></div><div class="s-right"><div class="s-badge idle" id="m_rt">NOT STARTED</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">🔔</span><div class="s-info"><div class="s-name">Buzzer</div></div></div><div class="s-right"><div class="s-badge idle" id="m_buzzer">SILENT</div></div></div>
         </div></div>
       </div>
 
@@ -487,229 +514,169 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="grid-3"><div class="chart-card"><div class="sec-title">Peak Usage Hours</div><canvas id="chartHours"></canvas></div><div class="chart-card"><div class="sec-title">Bin Usage Split</div><canvas id="chartSplit"></canvas></div><div class="chart-card"><div class="sec-title">Sensor Uptime %</div><canvas id="chartUptime"></canvas></div></div>
       </div>
 
+      <!-- REMOTE CONTROL -->
+      <div class="page" id="page-control">
+        <div class="sec-head"><div><div class="sec-title">Remote Control</div><div class="sec-subtitle">Send commands to ESP32 via Supabase — ESP32 polls every 3s and executes</div></div></div>
+
+        <!-- Supabase offline warning — only shows when disconnected -->
+        <div id="ctrlConnWarn" style="display:none; align-items:center;gap:8px;padding:10px 16px;border-radius:9px;background:var(--red-bg);border:1px solid rgba(239,68,68,0.25);color:var(--red);font-size:0.76rem;margin-bottom:14px;">
+          ⚠️ Supabase not connected — commands cannot be sent. Check network connection.
+        </div>
+
+        <div class="grid-2" style="margin-bottom:16px;">
+          <div class="card">
+            <div class="sec-title" style="margin-bottom:14px;">🌿 Biodegradable Bin Controls</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">⚙️</span><div class="s-info"><div class="s-name">Lid Control</div><div class="s-desc">Force open or close the servo lid</div></div></div><div class="s-right" style="flex-direction:row;gap:6px;"><div class="btn em" style="padding:6px 11px;" onclick="sendCommand('open_bio_lid')">Open</div><div class="btn" style="padding:6px 11px;" onclick="sendCommand('close_bio_lid')">Close</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">📡</span><div class="s-info"><div class="s-name">Ultrasonic Trigger</div><div class="s-desc">Simulate object detection approach</div></div></div><div class="s-right"><div class="btn blue" style="padding:6px 11px;" onclick="sendCommand('trigger_bio_us')">Trigger</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">💡</span><div class="s-info"><div class="s-name">LED Override</div><div class="s-desc">Force green or red LED state</div></div></div><div class="s-right" style="flex-direction:row;gap:6px;"><div class="btn em" style="padding:6px 11px;" onclick="sendCommand('led_bio_green')">Green</div><div class="btn red" style="padding:6px 11px;" onclick="sendCommand('led_bio_red')">Red</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">🔄</span><div class="s-info"><div class="s-name">Mark Emptied</div><div class="s-desc">Reset bio bin level to 0%</div></div></div><div class="s-right"><div class="btn amber" style="padding:6px 11px;" onclick="sendCommand('reset_bio')">Reset</div></div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="sec-title" style="margin-bottom:14px;">♻️ Non-Biodegradable Bin Controls</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">⚙️</span><div class="s-info"><div class="s-name">Lid Control</div><div class="s-desc">Force open or close the servo lid</div></div></div><div class="s-right" style="flex-direction:row;gap:6px;"><div class="btn blue" style="padding:6px 11px;" onclick="sendCommand('open_nb_lid')">Open</div><div class="btn" style="padding:6px 11px;" onclick="sendCommand('close_nb_lid')">Close</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">📡</span><div class="s-info"><div class="s-name">Ultrasonic Trigger</div><div class="s-desc">Simulate object detection approach</div></div></div><div class="s-right"><div class="btn blue" style="padding:6px 11px;" onclick="sendCommand('trigger_nb_us')">Trigger</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">💡</span><div class="s-info"><div class="s-name">LED Override</div><div class="s-desc">Force green or red LED state</div></div></div><div class="s-right" style="flex-direction:row;gap:6px;"><div class="btn em" style="padding:6px 11px;" onclick="sendCommand('led_nb_green')">Green</div><div class="btn red" style="padding:6px 11px;" onclick="sendCommand('led_nb_red')">Red</div></div></div>
+              <div class="sensor-item"><div class="s-left"><span class="s-ico">🔄</span><div class="s-info"><div class="s-name">Mark Emptied</div><div class="s-desc">Reset non-bio bin level to 0%</div></div></div><div class="s-right"><div class="btn amber" style="padding:6px 11px;" onclick="sendCommand('reset_nb')">Reset</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="sec-title" style="margin-bottom:12px;">Global Commands</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <div class="btn em" onclick="sendCommand('open_all_lids')">⚙️ Open All Lids</div>
+            <div class="btn" onclick="sendCommand('close_all_lids')">⚙️ Close All Lids</div>
+            <div class="btn red" onclick="sendCommand('buzzer_on')">🔔 Buzzer ON</div>
+            <div class="btn" onclick="sendCommand('buzzer_off')">🔕 Buzzer OFF</div>
+            <div class="btn amber" onclick="sendCommand('reset_all')">🔄 Reset All Bins</div>
+            <div class="btn blue" onclick="sendCommand('request_status')">📊 Request Status</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="sec-head" style="margin-bottom:12px;">
+            <div class="sec-title">Command Queue <span id="cmdQueueCount" style="color:var(--text3);font-size:0.6rem;font-weight:400;text-transform:none;letter-spacing:0;">(last 20)</span></div>
+            <div style="display:flex;gap:7px;"><div class="btn" style="padding:4px 10px;font-size:0.67rem;" onclick="refreshCmdQueue()">↺ Refresh</div><div class="btn red" style="padding:4px 10px;font-size:0.67rem;" onclick="clearCmdQueue()">🗑 Clear Done</div></div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="cmd-table">
+              <thead><tr><th>#</th><th>Command</th><th>Status</th><th>Sent At</th><th>Executed At</th></tr></thead>
+              <tbody id="cmdQueueBody"><tr><td colspan="5" style="text-align:center;color:var(--text3);padding:18px;">No commands yet.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- SENSORS -->
       <div class="page" id="page-sensors">
         <div class="sec-head"><div><div class="sec-title">Sensor Status</div><div class="sec-subtitle">Hardware health &amp; diagnostics</div></div></div>
         <div style="display:flex;flex-direction:column;gap:8px;">
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4E1;</span><div class="s-info"><div class="s-name">ESP32 DevKit V1</div><div class="s-desc">Main microcontroller — manages all sensors, servos, OLED, and Supabase sync. 240MHz dual-core.</div></div></div><div class="s-right"><div class="s-badge online">&#x25CF; ONLINE</div><div class="s-time">Updated just now</div></div></div>
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F50A;</span><div class="s-info"><div class="s-name">HC-SR04 Ultrasonic — Bio (GPIO 14/27)</div><div class="s-desc">Proximity sensor at Bio bin opening. Triggers servo when object &lt;30cm.</div></div></div><div class="s-right"><div class="s-badge idle" id="sp_us_bio">IDLE</div></div></div>
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F50A;</span><div class="s-info"><div class="s-name">HC-SR04 Ultrasonic — Non-Bio (GPIO 12/13)</div><div class="s-desc">Proximity sensor at Non-Bio bin opening.</div></div></div><div class="s-right"><div class="s-badge idle" id="sp_us_nb">IDLE</div></div></div>
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4CF;</span><div class="s-info"><div class="s-name">VL53L0X ToF Laser — Bio (I2C: 0x29)</div><div class="s-desc">Time-of-flight laser measures distance to trash surface. 0mm = full, 400mm = empty.</div></div></div><div class="s-right"><div class="s-badge active" id="sp_vl_bio" style="font-size:0.6rem;">400 mm</div><div class="s-time">I2C bus 1</div></div></div>
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4CF;</span><div class="s-info"><div class="s-name">VL53L0X ToF Laser — Non-Bio (I2C: 0x30)</div><div class="s-desc">Alternate I2C address via XSHUT pin.</div></div></div><div class="s-right"><div class="s-badge active" id="sp_vl_nb" style="font-size:0.6rem;">400 mm</div><div class="s-time">I2C bus 1</div></div></div>
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x2699;&#xFE0F;</span><div class="s-info"><div class="s-name">MG90S Servo — Bio Lid (GPIO 18)</div><div class="s-desc">0 deg = closed, 90 deg = open. Auto-closes after 3s.</div></div></div><div class="s-right"><div class="s-badge idle" id="sp_srv_bio">CLOSED</div><div class="s-time" id="sp_srv_bio_t">0 deg</div></div></div>
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x2699;&#xFE0F;</span><div class="s-info"><div class="s-name">MG90S Servo — Non-Bio Lid (GPIO 19)</div><div class="s-desc">Same logic as Bio servo.</div></div></div><div class="s-right"><div class="s-badge idle" id="sp_srv_nb">CLOSED</div><div class="s-time" id="sp_srv_nb_t">0 deg</div></div></div>
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4A1;</span><div class="s-info"><div class="s-name">LED Indicators x4 (GPIO 4,5,15,16)</div><div class="s-desc">2 LEDs per bin. Green = space, Red blinking = full.</div></div></div><div class="s-right"><div class="s-badge online" id="sp_led">4x GREEN</div></div></div>
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F514;</span><div class="s-info"><div class="s-name">Passive Buzzer (GPIO 21)</div><div class="s-desc">PWM 1kHz tone when any bin reaches 100%.</div></div></div><div class="s-right"><div class="s-badge idle" id="sp_buzz">SILENT</div></div></div>
-          <div class="sensor-item"><div class="s-left"><span class="s-ico">&#x1F4FA;</span><div class="s-info"><div class="s-name">SSD1306 OLED 128x64 (I2C: 0x3C)</div><div class="s-desc">On-device display showing bin levels and status.</div></div></div><div class="s-right"><div class="s-badge online">ACTIVE</div><div class="s-time">I2C bus 1</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">📡</span><div class="s-info"><div class="s-name">ESP32 DevKit V1</div><div class="s-desc">Main MCU · 240MHz dual-core · WiFi + BT</div></div></div><div class="s-right"><div class="s-badge offline" id="sp_esp32">OFFLINE</div><div class="s-time" id="sp_esp_seen">Last seen: --</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">🗄</span><div class="s-info"><div class="s-name">Supabase Database</div><div class="s-desc">Remote data store &amp; command relay</div></div></div><div class="s-right"><div class="s-badge connecting" id="sp_sb">CONNECTING</div><div class="s-time" id="sp_sb_ping">Ping: --</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">🔊</span><div class="s-info"><div class="s-name">HC-SR04 Ultrasonic — Bio (GPIO 12/13)</div><div class="s-desc">Triggers servo when object &lt;5 inches. Auto-close 3s.</div></div></div><div class="s-right"><div class="s-badge idle" id="sp_us_bio">IDLE</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">🔊</span><div class="s-info"><div class="s-name">HC-SR04 Ultrasonic — Non-Bio (GPIO 14/27)</div><div class="s-desc">Same logic as Bio side.</div></div></div><div class="s-right"><div class="s-badge idle" id="sp_us_nb">IDLE</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">📏</span><div class="s-info"><div class="s-name">VL53L0X ToF — Bio (I2C 0x30)</div><div class="s-desc">0 mm = 100% full · 250+ mm = empty</div></div></div><div class="s-right"><div class="s-badge active" id="sp_vl_bio" style="font-size:0.6rem;">-- mm</div><div class="s-time">I2C bus 1</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">📏</span><div class="s-info"><div class="s-name">VL53L0X ToF — Non-Bio (I2C 0x31)</div><div class="s-desc">Alternate address via XSHUT pin.</div></div></div><div class="s-right"><div class="s-badge active" id="sp_vl_nb" style="font-size:0.6rem;">-- mm</div><div class="s-time">I2C bus 1</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">⚙️</span><div class="s-info"><div class="s-name">MG90S Servo — Bio Lid (GPIO 18)</div><div class="s-desc">40° closed · 110° open · Auto-close after 3s</div></div></div><div class="s-right"><div class="s-badge idle" id="sp_srv_bio">CLOSED</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">⚙️</span><div class="s-info"><div class="s-name">MG90S Servo — Non-Bio Lid (GPIO 19)</div><div class="s-desc">Same logic as Bio servo.</div></div></div><div class="s-right"><div class="s-badge idle" id="sp_srv_nb">CLOSED</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">💡</span><div class="s-info"><div class="s-name">LED Indicators x4 (GPIO 33,26,25,32)</div><div class="s-desc">2 per bin · Green = space · Red blinking = full</div></div></div><div class="s-right"><div class="s-badge online" id="sp_led">4x GREEN</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">🔔</span><div class="s-info"><div class="s-name">Passive Buzzer (GPIO 16)</div><div class="s-desc">Short beep on approach · Long beep when full</div></div></div><div class="s-right"><div class="s-badge idle" id="sp_buzz">SILENT</div></div></div>
+          <div class="sensor-item"><div class="s-left"><span class="s-ico">📺</span><div class="s-info"><div class="s-name">SH1106 OLED 128x64 (I2C 0x3C)</div><div class="s-desc">Shows bin levels and status text in real time.</div></div></div><div class="s-right"><div class="s-badge online">ACTIVE</div><div class="s-time">I2C bus 1</div></div></div>
         </div>
       </div>
 
       <!-- ACTIVITY LOGS -->
       <div class="page" id="page-logs">
-        <div class="sec-head"><div><div class="sec-title">Activity Logs</div><div class="sec-subtitle">Full event timeline with filtering</div></div><div style="display:flex;gap:7px;"><div class="btn em" onclick="exportCSV()">&#x2B07; Export CSV</div><div class="btn red" onclick="clearLogs()">&#x1F5D1; Clear</div></div></div>
-        <div class="card"><div class="log-toolbar"><select class="log-filter" id="logTypeFilter" onchange="filterLogs()"><option value="all">All Types</option><option value="info">Info</option><option value="warn">Warning</option><option value="danger">Danger</option><option value="action">Action</option></select><input class="log-search" type="text" placeholder="Search logs…" id="logSearch" oninput="filterLogs()"></div><div class="log-feed" id="logFeedFull" style="max-height:500px;"></div></div>
+        <div class="sec-head"><div><div class="sec-title">Activity Logs</div><div class="sec-subtitle">Full event timeline with filtering</div></div><div style="display:flex;gap:7px;"><div class="btn em" onclick="exportCSV()">↓ Export CSV</div><div class="btn red" onclick="clearLogs()">🗑 Clear</div></div></div>
+        <div class="card"><div class="log-toolbar"><select class="log-filter" id="logTypeFilter" onchange="filterLogs()"><option value="all">All Types</option><option value="info">Info</option><option value="warn">Warning</option><option value="danger">Danger</option><option value="action">Action</option></select><input class="log-search" type="text" placeholder="Search logs..." id="logSearch" oninput="filterLogs()"></div><div class="log-feed" id="logFeedFull" style="max-height:500px;"></div></div>
       </div>
 
       <!-- NOTIFICATIONS -->
       <div class="page" id="page-notifications">
-        <div class="sec-head"><div><div class="sec-title">Notifications</div><div class="sec-subtitle">System alerts and GAS email delivery history</div></div><div class="btn em" onclick="markAllRead()">&#x2713; Mark All Read</div></div>
-        <div class="card" style="margin-bottom:14px;">
-          <div class="sec-title" style="margin-bottom:10px;">In-App Alerts</div>
-          <div id="notifPageList" style="display:flex;flex-direction:column;"></div>
-        </div>
-        <div class="card">
-          <div class="sec-head" style="margin-bottom:10px;">
-            <div class="sec-title">GAS Email Delivery History</div>
-            <button class="btn" style="padding:4px 10px;font-size:0.67rem;" onclick="clearGasHistory()">&#x1F5D1; Clear</button>
-          </div>
-          <div id="gasHistory" style="display:flex;flex-direction:column;gap:6px;">
-            <div style="font-size:0.75rem;color:var(--text2);text-align:center;padding:20px 0;">No emails sent yet.</div>
-          </div>
-        </div>
+        <div class="sec-head"><div><div class="sec-title">Notifications</div><div class="sec-subtitle">System alerts and bin status events</div></div><div class="btn em" onclick="markAllRead()">✓ Mark All Read</div></div>
+        <div class="card"><div class="sec-title" style="margin-bottom:10px;">In-App Alerts</div><div id="notifPageList"><div style="font-size:0.75rem;color:var(--text2);text-align:center;padding:20px 0;">No notifications yet.</div></div></div>
       </div>
 
-      <!-- GAS ALERTS PAGE -->
-      <div class="page" id="page-gas">
-        <div class="sec-head"><div><div class="sec-title">Google Apps Script Email Alerts</div><div class="sec-subtitle">Automated email notifications via GAS relay — no OAuth required</div></div></div>
-        <div class="card" style="margin-bottom:14px;">
-          <div class="sec-title" style="margin-bottom:12px;">How Automatic Notifications Work</div>
-          <div class="grid-3" style="gap:10px;">
-            <div style="padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;text-align:center;">
-              <div style="font-size:28px;margin-bottom:8px;">&#x1F5D1;</div>
-              <div style="font-size:0.78rem;font-weight:600;margin-bottom:4px;">1 · Bin Fills Up</div>
-              <div style="font-size:0.67rem;color:var(--text2);line-height:1.5;">ESP32 VL53L0X sensor detects distance = 0 mm (100% full) or dashboard simulates the threshold.</div>
-            </div>
-            <div style="padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;text-align:center;">
-              <div style="font-size:28px;margin-bottom:8px;">&#x1F4E1;</div>
-              <div style="font-size:0.78rem;font-weight:600;margin-bottom:4px;">2 · Dashboard Fires Request</div>
-              <div style="font-size:0.67rem;color:var(--text2);line-height:1.5;">A fetch() POST is automatically sent to your GAS Web App URL with bin type, level, and timestamp.</div>
-            </div>
-            <div style="padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;text-align:center;">
-              <div style="font-size:28px;margin-bottom:8px;">&#x1F4E7;</div>
-              <div style="font-size:0.78rem;font-weight:600;margin-bottom:4px;">3 · GAS Sends Email</div>
-              <div style="font-size:0.67rem;color:var(--text2);line-height:1.5;">Google Apps Script receives the payload and calls GmailApp.sendEmail() to all configured recipients.</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid-2" style="margin-bottom:14px;">
+      <!-- SETTINGS — credentials removed from UI; only status shown -->
+      <div class="page" id="page-settings">
+        <div class="sec-head"><div><div class="sec-title">System Settings</div></div></div>
+        <div class="grid-2">
+          <!-- Connection status (read-only — credentials are in the source file) -->
           <div class="card">
-            <div style="margin-bottom:16px;"><div class="sec-title" style="margin-bottom:4px;">GAS Configuration</div><div style="font-size:0.72rem;color:var(--text2);">Paste your deployed Web App URL and recipient emails below. Saved locally in browser.</div></div>
-            <div class="settings-group">
-              <div class="sg-label">GAS Web App URL <span style="color:var(--red);font-size:0.65rem;">*required</span></div>
-              <input type="text" class="input-field" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
-              <div style="font-size:0.64rem;color:var(--text3);margin-top:4px;">Deploy your Apps Script as Web App &rarr; Anyone &rarr; Execute as Me.</div>
-            </div>
-            <div class="settings-group">
-              <div class="sg-label">Recipient Emails <span style="color:var(--text3);font-size:0.65rem;">(comma-separated)</span></div>
-              <input type="text" class="input-field" id="alertEmails" placeholder="admin@nbsc.edu.ph, janitor@nbsc.edu.ph">
-            </div>
-            <div class="settings-group">
-              <div class="sg-label">Alert Thresholds</div>
-              <div style="display:flex;flex-direction:column;">
-                <div class="toggle-row"><div class="toggle-info"><div class="t-name">75% Warning Email</div><div class="t-desc">Alert when bin approaches capacity</div></div><label class="toggle"><input type="checkbox" id="thr75" checked><span class="toggle-slider"></span></label></div>
-                <div class="toggle-row"><div class="toggle-info"><div class="t-name">100% Full Email</div><div class="t-desc">Critical alert — disposal required</div></div><label class="toggle"><input type="checkbox" id="thr100" checked><span class="toggle-slider"></span></label></div>
-                <div class="toggle-row"><div class="toggle-info"><div class="t-name">Disposal Confirmation Email</div><div class="t-desc">Email when bin is emptied</div></div><label class="toggle"><input type="checkbox" id="thrDispose"><span class="toggle-slider"></span></label></div>
+            <div class="sec-title" style="margin-bottom:14px;">Connection Status</div>
+            <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;">
+              <div style="padding:12px 14px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:0.68rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);">Supabase</div>
+              <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="status-dot off" id="sbStatusDot"></div>
+                    <span style="font-size:0.78rem;font-weight:500;">Database</span>
+                  </div>
+                  <span class="s-badge offline" id="sbStatusBadge">DISCONNECTED</span>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:0.67rem;color:var(--text2);" id="sbStatusTxt">Connecting...</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--text3);" id="sbPingTxt">Ping: --</div>
               </div>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-              <div class="btn em" onclick="saveGASConfig()">&#x1F4BE; Save Config</div>
-              <div class="btn blue" onclick="testEmail()">&#x1F4E7; Send Test Email</div>
-              <div class="btn amber" onclick="manualFullAlert('bio')">&#x1F33F; Test Bio Full</div>
-              <div class="btn" onclick="manualFullAlert('nonbio')">&#x267B;&#xFE0F; Test NB Full</div>
+            <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+              <div style="padding:12px 14px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:0.68rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);">ESP32 Device</div>
+              <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="status-dot off" id="espStatusDot"></div>
+                    <span style="font-size:0.78rem;font-weight:500;" id="espStatusLabel">ESP32 Offline</span>
+                  </div>
+                  <span class="s-badge offline" id="espStatusBadge">OFFLINE</span>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:0.67rem;color:var(--text2);" id="espStatusTxt">Waiting for heartbeat...</div>
+              </div>
             </div>
-            <div id="gasConfigStatus" class="gas-status idle">No URL configured — enter GAS Web App URL above to enable.</div>
           </div>
 
+          <!-- Supabase SQL setup -->
           <div class="card">
-            <div style="margin-bottom:12px;"><div class="sec-title" style="margin-bottom:4px;">Apps Script Template</div><div style="font-size:0.72rem;color:var(--text2);">Copy this into a new Google Apps Script project and deploy as Web App.</div></div>
-            <div class="code-block" id="gasScriptCode">// SmartBin IoT — Google Apps Script Email Relay
-// Paste into script.google.com → Deploy as Web App
-// Execute as: Me | Access: Anyone
+            <div class="sec-title" style="margin-bottom:12px;">Required Supabase Tables</div>
+            <div style="font-size:0.72rem;color:var(--text2);margin-bottom:12px;line-height:1.6;">Run this SQL in your Supabase SQL Editor. Make sure to <strong style="color:var(--em);">disable RLS</strong> on both tables so the ESP32 can insert/update with the anon key:</div>
+            <div class="code-block" style="font-size:0.62rem;">-- bin_logs: ESP32 writes sensor data here
+CREATE TABLE IF NOT EXISTS bin_logs (
+  id               BIGSERIAL PRIMARY KEY,
+  device_id        TEXT DEFAULT 'smartbin-01',
+  bio_level        INT  DEFAULT 0,
+  nb_level         INT  DEFAULT 0,
+  bio_distance_mm  INT,
+  nb_distance_mm   INT,
+  bio_servo_open   BOOLEAN DEFAULT false,
+  nb_servo_open    BOOLEAN DEFAULT false,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
 
-function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-    var recipients = data.recipients || "";
-    var subject   = data.subject   || "SmartBin Alert";
-    var body      = data.body      || "";
+-- bin_commands: Dashboard writes, ESP32 polls & executes
+CREATE TABLE IF NOT EXISTS bin_commands (
+  id          BIGSERIAL PRIMARY KEY,
+  device_id   TEXT DEFAULT 'smartbin-01',
+  command     TEXT NOT NULL,
+  status      TEXT DEFAULT 'pending',
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  executed_at TIMESTAMPTZ
+);
 
-    if (!recipients) {
-      return jsonResp({ok:false,msg:"No recipients"});
-    }
+-- IMPORTANT: Disable RLS so anon key can read/write
+ALTER TABLE bin_logs     DISABLE ROW LEVEL SECURITY;
+ALTER TABLE bin_commands DISABLE ROW LEVEL SECURITY;
 
-    GmailApp.sendEmail(recipients, subject, body, {
-      htmlBody: data.htmlBody || body,
-      name: "SmartBin IoT System"
-    });
-
-    return jsonResp({ok:true,msg:"Email sent"});
-
-  } catch(err) {
-    return jsonResp({ok:false,msg:err.toString()});
-  }
-}
-
-function doGet(e) {
-  return jsonResp({ok:true,msg:"SmartBin GAS relay active"});
-}
-
-function jsonResp(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}</div>
-            <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap;">
-              <button class="btn em" onclick="copyGasScript()">&#x1F4CB; Copy Script</button>
-              <a href="https://script.google.com" target="_blank" class="btn blue" style="text-decoration:none;">&#x1F310; Open Apps Script</a>
-            </div>
+-- Enable realtime
+ALTER TABLE bin_logs     REPLICA IDENTITY FULL;
+ALTER TABLE bin_commands REPLICA IDENTITY FULL;</div>
           </div>
         </div>
-
+        <div class="gap"></div>
         <div class="card">
-          <div style="margin-bottom:12px;"><div class="sec-title" style="margin-bottom:4px;">ESP32 Code — Send Alert Directly from Hardware</div><div style="font-size:0.72rem;color:var(--text2);">Use this in your Arduino / PlatformIO sketch so the ESP32 itself can trigger emails without the dashboard.</div></div>
-          <div class="code-block">// SmartBin ESP32 → Google Apps Script Email Relay
-// Automatically fires when bin level reaches threshold
-#include &lt;WiFi.h&gt;
-#include &lt;HTTPClient.h&gt;
-#include &lt;ArduinoJson.h&gt;
-
-const char* GAS_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
-const char* RECIPIENTS = "admin@nbsc.edu.ph,janitor@nbsc.edu.ph";
-
-bool sendGASAlert(const char* binType, int level) {
-  if (WiFi.status() != WL_CONNECTED) return false;
-
-  HTTPClient http;
-  http.begin(GAS_URL);
-  http.addHeader("Content-Type", "application/json");
-
-  // Build JSON payload
-  StaticJsonDocument&lt;512&gt; doc;
-  doc["recipients"] = RECIPIENTS;
-  doc["subject"]    = String(binType) + " bin FULL — SmartBin IoT";
-  doc["body"]       = String(binType) + " bin reached 100%. Please empty it.";
-
-  String body; serializeJson(doc, body);
-  int code = http.POST(body);
-  http.end();
-  return (code == 200);
-}
-
-// In your main loop, call this when bin is detected full:
-void checkAndNotify() {
-  if (bioLevel >= 100 &amp;&amp; !bioAlertSent) {
-    sendGASAlert("Biodegradable", bioLevel);
-    bioAlertSent = true;
-  }
-  if (nbLevel >= 100 &amp;&amp; !nbAlertSent) {
-    sendGASAlert("Non-Biodegradable", nbLevel);
-    nbAlertSent = true;
-  }
-}</div>
-        </div>
-      </div>
-
-      <!-- SUPABASE -->
-      <div class="page" id="page-supabase">
-        <div class="sec-head"><div><div class="sec-title">Supabase Integration</div><div class="sec-subtitle">Real-time database configuration and sync status</div></div></div>
-        <div class="grid-2">
-          <div class="card">
-            <div class="settings-group"><div class="sg-label">Supabase Project URL</div><input type="text" class="input-field" id="sbUrl" placeholder="https://xxxx.supabase.co"></div>
-            <div class="settings-group"><div class="sg-label">Anon/Public Key</div><input type="password" class="input-field" id="sbKey" placeholder="eyJ..."></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"><div class="btn em" onclick="toggleDB()">&#x1F50C; Toggle Connection</div><div class="btn blue" onclick="showToast('&#x1F50C;','Connection tested — latency 42ms','blue')">&#x26A1; Test Connection</div></div>
-            <div style="padding:10px 12px;background:var(--em-bg);border:1px solid rgba(0,214,143,0.2);border-radius:9px;display:flex;align-items:center;gap:9px;" id="sbStatus"><div class="status-dot"></div><div style="font-size:0.75rem;font-weight:500;color:var(--em);" id="sbStatusTxt">Connected · Last sync just now · Latency 38ms</div></div>
-          </div>
-          <div class="card"><div class="sec-title" style="margin-bottom:12px;">ESP32 Code Example</div>
-            <div class="code-block">// SmartBin ESP32 → Supabase
-#include &lt;WiFi.h&gt;
-#include &lt;HTTPClient.h&gt;
-
-void sendToSupabase(int bioLvl, int nbLvl) {
-  HTTPClient http;
-  http.begin(SUPABASE_URL "/rest/v1/bin_logs");
-  http.addHeader("apikey", SUPABASE_KEY);
-  int code = http.POST(body);
-  http.end();
-}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- SETTINGS -->
-      <div class="page" id="page-settings">
-        <div class="sec-head"><div><div class="sec-title">System Settings</div><div class="sec-subtitle">Threshold configuration and preferences</div></div></div>
-        <div class="grid-2">
-          <div class="card"><div class="sec-title" style="margin-bottom:12px;">Sensor Thresholds</div>
-            <div class="settings-group"><div class="sg-label">Warning Threshold (%)</div><input type="number" class="input-field" id="cfgWarnThr" value="75" min="1" max="99"></div>
-            <div class="settings-group"><div class="sg-label">Full Threshold (%)</div><input type="number" class="input-field" id="cfgFullThr" value="100" min="1" max="100"></div>
-            <div class="settings-group"><div class="sg-label">Bin Height (mm)</div><input type="number" class="input-field" value="400"></div>
-            <div class="settings-group"><div class="sg-label">Ultrasonic Trigger Distance (cm)</div><input type="number" class="input-field" value="30"></div>
-            <div class="settings-group"><div class="sg-label">Lid Auto-Close Delay (ms)</div><input type="number" class="input-field" value="3000"></div>
-            <div class="btn em" onclick="showToast('&#x2705;','Thresholds saved','em')">&#x1F4BE; Save Settings</div>
-          </div>
-          <div class="card"><div class="sec-title" style="margin-bottom:12px;">Notification Preferences</div>
-            <div style="display:flex;flex-direction:column;"><div class="toggle-row"><div class="toggle-info"><div class="t-name">GAS Email Alerts</div><div class="t-desc">Send email on threshold breach via Apps Script</div></div><label class="toggle"><input type="checkbox" id="pref-gas" checked><span class="toggle-slider"></span></label></div><div class="toggle-row"><div class="toggle-info"><div class="t-name">Buzzer Audio Alert</div></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div><div class="toggle-row"><div class="toggle-info"><div class="t-name">OLED Display Alerts</div></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div><div class="toggle-row"><div class="toggle-info"><div class="t-name">Supabase Logging</div></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div></div>
+          <div class="sec-title" style="margin-bottom:12px;">Notification Preferences</div>
+          <div style="display:flex;flex-direction:column;">
+            <div class="toggle-row"><div class="toggle-info"><div class="t-name">In-App Alerts</div><div class="t-desc">Show notification panel on threshold events</div></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+            <div class="toggle-row"><div class="toggle-info"><div class="t-name">Buzzer Audio Alert</div><div class="t-desc">Visual indicator when bin is full</div></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+            <div class="toggle-row"><div class="toggle-info"><div class="t-name">OLED Display Alerts</div><div class="t-desc">Show warnings on the simulated OLED</div></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
           </div>
         </div>
       </div>
@@ -718,24 +685,9 @@ void sendToSupabase(int bioLvl, int nbLvl) {
       <div class="page" id="page-reports">
         <div class="sec-head"><div><div class="sec-title">Reports</div><div class="sec-subtitle">Generate and download waste management reports as PDF</div></div></div>
         <div class="grid-3">
-          <div class="card" style="text-align:center;padding:28px 18px;">
-            <div style="font-size:40px;margin-bottom:12px;">&#x1F4C4;</div>
-            <div style="font-weight:700;font-size:1rem;margin-bottom:6px;">Daily Report</div>
-            <div style="font-size:0.72rem;color:var(--text2);margin-bottom:18px;line-height:1.6;">Current bin levels, today's activity log, disposal counts, and sensor health summary.</div>
-            <div class="btn em" style="width:100%;justify-content:center;" onclick="generateDailyPDF()">&#x2B07; Generate Daily PDF</div>
-          </div>
-          <div class="card" style="text-align:center;padding:28px 18px;">
-            <div style="font-size:40px;margin-bottom:12px;">&#x1F4CA;</div>
-            <div style="font-weight:700;font-size:1rem;margin-bottom:6px;">Weekly Analytics</div>
-            <div style="font-size:0.72rem;color:var(--text2);margin-bottom:18px;line-height:1.6;">7-day fill level trends, disposal frequency, peak usage hours, and weekly summary stats.</div>
-            <div class="btn blue" style="width:100%;justify-content:center;" onclick="generateWeeklyPDF()">&#x2B07; Generate Weekly PDF</div>
-          </div>
-          <div class="card" style="text-align:center;padding:28px 18px;">
-            <div style="font-size:40px;margin-bottom:12px;">&#x1F4CB;</div>
-            <div style="font-weight:700;font-size:1rem;margin-bottom:6px;">Raw CSV Export</div>
-            <div style="font-size:0.72rem;color:var(--text2);margin-bottom:18px;line-height:1.6;">Full activity log as CSV for external analysis in Excel or Google Sheets.</div>
-            <div class="btn amber" style="width:100%;justify-content:center;" onclick="exportCSV()">&#x2B07; Export CSV</div>
-          </div>
+          <div class="card" style="text-align:center;padding:28px 18px;"><div style="font-size:40px;margin-bottom:12px;">📄</div><div style="font-weight:700;font-size:1rem;margin-bottom:6px;">Daily Report</div><div style="font-size:0.72rem;color:var(--text2);margin-bottom:18px;line-height:1.6;">Current bin levels, today's activity log, disposal counts, and sensor health.</div><div class="btn em" style="width:100%;justify-content:center;" onclick="generateDailyPDF()">↓ Generate Daily PDF</div></div>
+          <div class="card" style="text-align:center;padding:28px 18px;"><div style="font-size:40px;margin-bottom:12px;">📊</div><div style="font-weight:700;font-size:1rem;margin-bottom:6px;">Weekly Analytics</div><div style="font-size:0.72rem;color:var(--text2);margin-bottom:18px;line-height:1.6;">7-day fill level trends, disposal frequency, and peak usage hours.</div><div class="btn blue" style="width:100%;justify-content:center;" onclick="generateWeeklyPDF()">↓ Generate Weekly PDF</div></div>
+          <div class="card" style="text-align:center;padding:28px 18px;"><div style="font-size:40px;margin-bottom:12px;">📋</div><div style="font-weight:700;font-size:1rem;margin-bottom:6px;">Raw CSV Export</div><div style="font-size:0.72rem;color:var(--text2);margin-bottom:18px;line-height:1.6;">Full activity log as CSV for Excel or Google Sheets analysis.</div><div class="btn amber" style="width:100%;justify-content:center;" onclick="exportCSV()">↓ Export CSV</div></div>
         </div>
       </div>
 
@@ -744,285 +696,404 @@ void sendToSupabase(int bioLvl, int nbLvl) {
     <!-- SIM BAR -->
     <div class="sim-bar">
       <span class="sim-lbl">Simulate:</span>
-      <button class="sim-btn" onclick="approach('bio')">Bio — User</button>
-      <button class="sim-btn" onclick="approach('nonbio')">NonBio — User</button>
-      <button class="sim-btn" onclick="setLvl('bio',25)">Bio 25%</button>
-      <button class="sim-btn" onclick="setLvl('bio',75)">Bio 75%</button>
-      <button class="sim-btn" onclick="setLvl('bio',100)">Bio Full</button>
-      <button class="sim-btn" onclick="setLvl('nonbio',25)">NB 25%</button>
-      <button class="sim-btn" onclick="setLvl('nonbio',75)">NB 75%</button>
-      <button class="sim-btn" onclick="setLvl('nonbio',100)">NB Full</button>
+      <button class="sim-btn" onclick="simApproach('bio')">Bio – User</button>
+      <button class="sim-btn" onclick="simApproach('nonbio')">NonBio – User</button>
+      <button class="sim-btn" onclick="simSetLvl('bio',25)">Bio 25%</button>
+      <button class="sim-btn" onclick="simSetLvl('bio',75)">Bio 75%</button>
+      <button class="sim-btn" onclick="simSetLvl('bio',100)">Bio Full</button>
+      <button class="sim-btn" onclick="simSetLvl('nonbio',25)">NB 25%</button>
+      <button class="sim-btn" onclick="simSetLvl('nonbio',75)">NB 75%</button>
+      <button class="sim-btn" onclick="simSetLvl('nonbio',100)">NB Full</button>
       <button class="sim-btn" onclick="resetAll()">Reset</button>
-      <button class="sim-btn" onclick="toggleDB()">DB Toggle</button>
     </div>
 
     <footer class="footer">
-      <span>SmartBin IoT v1.0.0 · Build 2025.05</span>
-      <span id="ftSync">Last sync: just now</span>
-      <span>Supabase · GAS Email Relay</span>
-      <span>Developed by Group 5 · IT38B NBSC</span>
+      <span>SmartBin IoT v2.1.0 · Build 2025.05</span>
+      <span id="ftSync">Last sync: --</span>
+      <span>Supabase Realtime · ESP32 Heartbeat Monitor</span>
+      <span>Group 5 · IT38B · NBSC</span>
     </footer>
-  </div><!-- /main-wrap -->
-</div><!-- /app-shell -->
+  </div>
+</div>
 
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
-/* ════════════════════════════════════════════
-   GAS EMAIL RELAY
-════════════════════════════════════════════ */
-var GAS = {
-  url: 'https://script.google.com/a/macros/nbsc.edu.ph/s/AKfycbyBZpRHY7aR6weR42kOR1WbfI8kqgEgM-2_rS2oPifO_YR_6OlIiuWkl7NCvmPg2e4/exec',
-  recipients: '20231671@nbsc.edu.ph',
-  history: [],
+// ════════════════════════════════════════════════
+// CREDENTIALS — hardcoded in source only, never shown in UI
+// ════════════════════════════════════════════════
+var SUPABASE_URL = 'https://wjkvrwwpzngwfrxhcrlt.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqa3Zyd3dwem5nd2ZyeGhjcmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MDczNzIsImV4cCI6MjA4OTQ4MzM3Mn0.R-DlrG4gnyYS3hZr7_a_XlFzZg0hl64fsMaFG-QVZOU';
+var DEVICE_ID = 'smartbin-01';
 
-  isConfigured: function() {
-    return this.url && this.url.indexOf('script.google.com') !== -1;
-  },
+// ════════════════════════════════════════════════
+// SUPABASE CLIENT
+// ════════════════════════════════════════════════
+var _sb = null, _sbConnected = false, _sbChannel = null, _sbPingMs = null;
 
-  buildHtml: function(binName, level, alertType) {
-    var color  = alertType === 'full' ? '#ef4444' : alertType === 'warn' ? '#f59e0b' : '#00d68f';
-    var icon   = alertType === 'full' ? '&#x1F6A8;' : alertType === 'warn' ? '&#x26A0;&#xFE0F;' : '&#x2705;';
-    var title  = alertType === 'full'
-      ? binName + ' Bin is FULL — Immediate Action Required'
-      : alertType === 'warn'
-      ? binName + ' Bin at ' + level + '% — Approaching Capacity'
-      : binName + ' Bin Emptied — System Reset';
-    var ts = new Date().toLocaleString('en-PH', {
-      weekday:'long', year:'numeric', month:'long', day:'numeric',
-      hour:'2-digit', minute:'2-digit', second:'2-digit'
+function initSupabase(url, key) {
+  if (_sbChannel) { try { _sbChannel.unsubscribe(); } catch(_){} _sbChannel = null; }
+  if (_sb) { try { _sb.removeAllChannels(); } catch(_){} _sb = null; }
+  _sbConnected = false;
+  setSbStatus('connecting');
+
+  _sb = supabase.createClient(url, key);
+  var t0 = Date.now();
+
+  _sb.from('bin_logs').select('id').limit(1).then(function(res) {
+    _sbPingMs = Date.now() - t0;
+    if (res.error) {
+      _sbConnected = false;
+      setSbStatus('error', res.error.message);
+      log('danger', 'Supabase connection failed: ' + res.error.message);
+    } else {
+      _sbConnected = true;
+      setSbStatus('ok');
+      log('info', 'Supabase connected (' + _sbPingMs + 'ms). Starting Realtime + polling...');
+      subscribeRealtime();
+      fetchLatest();
+      fetchDeviceStatus();
+      refreshCmdQueue();
+    }
+  });
+}
+
+function subscribeRealtime() {
+  if (!_sb) return;
+  _sbChannel = _sb.channel('smartbin_rt')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bin_logs' }, function(payload) {
+      var r = payload.new;
+      log('info', '[RT] New reading — Bio:' + r.bio_level + '% NB:' + r.nb_level + '%');
+      applyReading(r);
+      fetchDeviceStatus();
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bin_commands' }, function(payload) {
+      var c = payload.new;
+      if (c.status === 'executed') {
+        log('action', '[RT] ESP32 executed command: ' + c.command);
+        showToast('✅', 'ESP32 executed: ' + c.command, 'em');
+        refreshCmdQueue();
+      }
+    })
+    .subscribe(function(status) {
+      var rtEl = document.getElementById('sc-rt-status');
+      var mRt  = document.getElementById('m_rt');
+      if (status === 'SUBSCRIBED') {
+        if (rtEl) rtEl.textContent = 'LIVE';
+        if (mRt) { mRt.textContent = 'LIVE'; mRt.className = 's-badge online'; }
+        log('info', 'Realtime channel subscribed.');
+      } else if (status === 'CHANNEL_ERROR') {
+        if (rtEl) rtEl.textContent = 'ERROR';
+        if (mRt) { mRt.textContent = 'ERROR'; mRt.className = 's-badge danger'; }
+      } else {
+        if (rtEl) rtEl.textContent = status.toUpperCase();
+        if (mRt) { mRt.textContent = status.toUpperCase(); mRt.className = 's-badge idle'; }
+      }
     });
-    // NOTE: closing tags are split to prevent browser HTML parser from
-    // misinterpreting them and exiting the script block prematurely.
-    return '<!DOCTYPE html>' +
-      '<html><head><meta charset="UTF-8"><' + '/head>' +
-      '<body style="margin:0;padding:0;background:#f0f4f8;font-family:Arial,sans-serif;">' +
-      '<div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.12);">' +
-      '<div style="background:' + color + ';padding:28px 32px;text-align:center;">' +
-      '<div style="color:#fff;font-size:1.2rem;font-weight:700;">' + title + '<' + '/div>' +
-      '<' + '/div>' +
-      '<div style="padding:28px 32px;">' +
-      '<table style="width:100%;border-collapse:collapse;font-size:0.9rem;">' +
-      '<tr><td style="padding:10px 0;color:#6b7280;">Bin Type<' + '/td><td style="padding:10px 0;font-weight:700;">' + binName + '<' + '/td><' + '/tr>' +
-      '<tr><td style="padding:10px 0;color:#6b7280;">Fill Level<' + '/td><td style="padding:10px 0;font-weight:700;color:' + color + ';">' + level + '%<' + '/td><' + '/tr>' +
-      '<tr><td style="padding:10px 0;color:#6b7280;">Alert Type<' + '/td><td style="padding:10px 0;font-weight:700;">' + (alertType === 'full' ? 'BIN FULL' : alertType === 'warn' ? 'WARNING' : 'DISPOSAL') + '<' + '/td><' + '/tr>' +
-      '<tr><td style="padding:10px 0;color:#6b7280;">Timestamp<' + '/td><td style="padding:10px 0;font-size:0.82rem;color:#6b7280;">' + ts + '<' + '/td><' + '/tr>' +
-      '<' + '/table>' +
-      '<' + '/div>' +
-      '<div style="padding:14px 32px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;font-size:0.7rem;color:#9ca3af;">' +
-      'SmartBin IoT v1.0 | Group 5 | IT38B NBSC | Automated Alert System' +
-      '<' + '/div>' +
-      '<' + '/div>' +
-      '<' + '/body><' + '/html>';
-  },
+}
 
-  send: async function(binName, level, alertType) {
-    if (!this.isConfigured()) {
-      console.warn('[GAS] Not configured — skipping email.');
-      this._addHistory(binName, level, alertType, 'skipped');
-      return { ok: false, reason: 'not_configured' };
-    }
+// Poll every 3s
+setInterval(function() {
+  if (_sbConnected) { fetchLatest(); fetchDeviceStatus(); }
+}, 3000);
 
-    var subject = alertType === 'full'
-      ? 'SmartBin FULL: ' + binName + ' bin — Action Required'
-      : alertType === 'warn'
-      ? 'SmartBin Warning: ' + binName + ' bin at ' + level + '%'
-      : 'SmartBin: ' + binName + ' bin emptied';
+function fetchLatest() {
+  if (!_sb) return;
+  var t0 = Date.now();
+  _sb.from('bin_logs').select('*').order('created_at', {ascending:false}).limit(1).then(function(res) {
+    _sbPingMs = Date.now() - t0;
+    var sbPingEl = document.getElementById('sbPingTxt');
+    var spPingEl = document.getElementById('sp_sb_ping');
+    if (sbPingEl) sbPingEl.textContent = 'Ping: ' + _sbPingMs + 'ms';
+    if (spPingEl) spPingEl.textContent = 'Ping: ' + _sbPingMs + 'ms';
+    var hwPingEl = document.getElementById('hw_sb_ping');
+    if (hwPingEl) hwPingEl.textContent = _sbPingMs + 'ms';
+    if (res.error || !res.data || res.data.length === 0) return;
+    applyReading(res.data[0]);
+    var t = new Date().toLocaleTimeString('en-PH');
+    var ft = document.getElementById('ftSync'); if (ft) ft.textContent = 'Last sync: ' + t;
+    var lb = document.getElementById('lastSyncLabel'); if (lb) lb.textContent = t;
+  });
+}
 
-    var plain = 'SmartBin IoT Alert\n\nBin: ' + binName + '\nLevel: ' + level + '%\nStatus: ' + alertType.toUpperCase() + '\nTime: ' + new Date().toLocaleString('en-PH') + '\n\nThis is an automated message from SmartBin IoT.';
+function applyReading(r) {
+  var prevBio = S.bio.lvl, prevNB = S.nonbio.lvl;
+  S.bio.lvl    = typeof r.bio_level === 'number' ? r.bio_level : 0;
+  S.nonbio.lvl = typeof r.nb_level  === 'number' ? r.nb_level  : 0;
+  S.bio.rawMM    = r.bio_distance_mm  || null;
+  S.nonbio.rawMM = r.nb_distance_mm   || null;
+  S.bio.lidOpen    = r.bio_servo_open || false;
+  S.nonbio.lidOpen = r.nb_servo_open  || false;
+  renderBin('bio');
+  renderBin('nonbio');
+  checkThreshold('bio',    prevBio);
+  checkThreshold('nonbio', prevNB);
+}
 
-    var payload = {
-      recipients: this.recipients,
-      subject: subject,
-      body: plain,
-      htmlBody: this.buildHtml(binName, level, alertType)
-    };
-
-    this._addHistory(binName, level, alertType, 'pending');
-
-    try {
-      var resp = await fetch(this.url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      var result = { ok: false };
-      try { result = await resp.json(); } catch(_) {}
-
-      var status = result.ok ? 'sent' : 'failed';
-      this._updateLastHistory(status);
-      this._refreshHistoryUI();
-      updateGasIndicator();
-      return result;
-    } catch (err) {
-      console.error('[GAS] Fetch error:', err);
-      this._updateLastHistory('failed');
-      this._refreshHistoryUI();
-      return { ok: false, reason: err.message };
-    }
-  },
-
-  _addHistory: function(bin, level, type, status) {
-    this.history.unshift({
-      bin: bin, level: level, type: type, status: status,
-      ts: new Date().toLocaleString('en-PH', { month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' })
+function fetchDeviceStatus() {
+  if (!_sb) return;
+  _sb.from('bin_logs').select('created_at').eq('device_id', DEVICE_ID)
+    .order('created_at', {ascending:false}).limit(1).then(function(res) {
+      if (res.error || !res.data || res.data.length === 0) {
+        setESP32Status(false, null); return;
+      }
+      var secSince = (Date.now() - new Date(res.data[0].created_at).getTime()) / 1000;
+      setESP32Status(secSince < 60, { seconds_since_seen: secSince });
     });
-    if (this.history.length > 50) this.history.pop();
-    this._refreshHistoryUI();
-  },
+}
 
-  _updateLastHistory: function(status) {
-    if (this.history.length > 0) this.history[0].status = status;
-  },
+// ════════════════════════════════════════════════
+// CONNECTION STATUS UPDATERS
+// ════════════════════════════════════════════════
+function setSbStatus(state, msg) {
+  _sbConnected = (state === 'ok');
 
-  _refreshHistoryUI: function() {
-    var el = document.getElementById('gasHistory');
-    if (!el) return;
-    if (this.history.length === 0) {
-      el.innerHTML = '<div style="font-size:0.75rem;color:var(--text2);text-align:center;padding:20px 0;">No emails sent yet.<\/div>';
-      return;
-    }
-    var icons = { sent:'&#x2705;', failed:'&#x274C;', pending:'&#x23F3;', skipped:'&#x26AB;' };
-    var colors = { sent:'sent', failed:'failed', pending:'pending', skipped:'' };
-    var self = this;
-    el.innerHTML = this.history.map(function(h) {
-      return '<div class="notif-hist-item ' + (colors[h.status]||'') + '">' +
-        '<div class="nh-ico">' + (icons[h.status]||'&bull;') + '<\/div>' +
-        '<div class="nh-body">' +
-        '<div class="nh-title">' + (h.type === 'full' ? 'BIN FULL' : h.type === 'warn' ? 'WARNING 75%' : 'DISPOSED') + ' — ' + h.bin + '<\/div>' +
-        '<div class="nh-sub">Status: <strong>' + h.status.toUpperCase() + '<\/strong> · Level: ' + h.level + '% · Recipients: ' + (self.recipients||'—') + '<\/div>' +
-        '<div class="nh-ts">' + h.ts + '<\/div>' +
-        '<\/div><\/div>';
-    }).join('');
+  var dot      = document.getElementById('sbarDot');
+  var txt      = document.getElementById('sbarTxt');
+  var pill     = document.getElementById('sbPill');
+  var pillTxt  = document.getElementById('sbPillTxt');
+  var banner   = document.getElementById('sbBanner');
+  var bannerSub= document.getElementById('sbBannerSub');
+  var bannerBadge = document.getElementById('sbBannerBadge');
+  var scSb     = document.getElementById('sc-sb-status');
+  var stDot    = document.getElementById('sbStatusDot');
+  var stBadge  = document.getElementById('sbStatusBadge');
+  var stTxt    = document.getElementById('sbStatusTxt');
+  var hwSb     = document.getElementById('hw_sb');
+  var hwUrl    = document.getElementById('hw_sb_url');
+  var spSb     = document.getElementById('sp_sb');
+  var mDb      = document.getElementById('m_db');
+  // Remote control warning — visible only when disconnected
+  var ctrlWarn = document.getElementById('ctrlConnWarn');
+
+  if (state === 'ok') {
+    if (dot)    { dot.className = 'status-dot'; }
+    if (txt)    { txt.textContent = 'SB CONNECTED'; txt.className = 'st'; }
+    if (pill)   pill.className = 'conn-pill online';
+    if (pillTxt) pillTxt.textContent = 'SUPABASE ✓';
+    if (banner)  banner.className = 'conn-banner sb-online';
+    if (bannerSub) bannerSub.textContent = SUPABASE_URL.replace('https://','').split('.')[0] + '.supabase.co · ' + (_sbPingMs ? _sbPingMs + 'ms' : 'connected');
+    if (bannerBadge) bannerBadge.textContent = 'CONNECTED';
+    if (scSb)   { scSb.textContent = 'CONNECTED'; scSb.style.color = 'var(--em)'; }
+    if (stDot)  stDot.className = 'status-dot';
+    if (stBadge){ stBadge.textContent = 'CONNECTED'; stBadge.className = 's-badge online'; }
+    if (stTxt)  stTxt.textContent = 'Connected · ' + (_sbPingMs || '--') + 'ms ping';
+    if (hwSb)   { hwSb.textContent = 'CONNECTED'; hwSb.className = 's-badge online'; }
+    if (hwUrl)  hwUrl.textContent = SUPABASE_URL.replace('https://','').split('.')[0] + '.supabase.co';
+    if (spSb)   { spSb.textContent = 'CONNECTED'; spSb.className = 's-badge online'; }
+    if (mDb)    { mDb.textContent = 'CONNECTED'; mDb.className = 's-badge online'; }
+    if (ctrlWarn) ctrlWarn.style.display = 'none';
+
+  } else if (state === 'connecting') {
+    if (dot)    { dot.className = 'status-dot connecting'; }
+    if (txt)    { txt.textContent = 'CONNECTING...'; txt.className = 'st connecting'; }
+    if (pill)   pill.className = 'conn-pill connecting';
+    if (pillTxt) pillTxt.textContent = 'SUPABASE...';
+    if (banner)  banner.className = 'conn-banner sb-connecting';
+    if (bannerSub) bannerSub.textContent = 'Connecting to database...';
+    if (bannerBadge) bannerBadge.textContent = 'CONNECTING';
+    if (scSb)   { scSb.textContent = 'CONNECTING'; scSb.style.color = 'var(--blue)'; }
+    if (stDot)  stDot.className = 'status-dot connecting';
+    if (stBadge){ stBadge.textContent = 'CONNECTING'; stBadge.className = 's-badge connecting'; }
+    if (stTxt)  stTxt.textContent = 'Attempting to connect...';
+    if (hwSb)   { hwSb.textContent = 'CONNECTING'; hwSb.className = 's-badge connecting'; }
+    if (spSb)   { spSb.textContent = 'CONNECTING'; spSb.className = 's-badge connecting'; }
+    if (mDb)    { mDb.textContent = 'CONNECTING'; mDb.className = 's-badge connecting'; }
+    if (ctrlWarn) ctrlWarn.style.display = 'none';
+
+  } else {
+    if (dot)    { dot.className = 'status-dot off'; }
+    if (txt)    { txt.textContent = 'SB ERROR'; txt.className = 'st off'; }
+    if (pill)   pill.className = 'conn-pill offline';
+    if (pillTxt) pillTxt.textContent = 'SUPABASE ✗';
+    if (banner)  banner.className = 'conn-banner sb-error';
+    if (bannerSub) bannerSub.textContent = msg || 'Connection failed';
+    if (bannerBadge) bannerBadge.textContent = 'ERROR';
+    if (scSb)   { scSb.textContent = 'ERROR'; scSb.style.color = 'var(--red)'; }
+    if (stDot)  stDot.className = 'status-dot off';
+    if (stBadge){ stBadge.textContent = 'ERROR'; stBadge.className = 's-badge offline'; }
+    if (stTxt)  stTxt.textContent = 'Error: ' + (msg || 'connection failed');
+    if (hwSb)   { hwSb.textContent = 'ERROR'; hwSb.className = 's-badge offline'; }
+    if (spSb)   { spSb.textContent = 'ERROR'; spSb.className = 's-badge offline'; }
+    if (mDb)    { mDb.textContent = 'ERROR'; mDb.className = 's-badge danger'; }
+    if (ctrlWarn) ctrlWarn.style.display = 'flex';
   }
-};
+}
 
-/* ════════════════════════════════════════════
-   STATE
-════════════════════════════════════════════ */
+function setESP32Status(online, data) {
+  var secSince = data ? data.seconds_since_seen : null;
+  var isStale  = !online && secSince !== null && secSince < 300;
+  var seenAgo  = secSince !== null
+    ? (secSince < 60 ? Math.round(secSince) + 's ago' : Math.round(secSince / 60) + 'm ago')
+    : 'unknown';
+
+  var pill       = document.getElementById('espPill');
+  var pillTxt    = document.getElementById('espPillTxt');
+  var banner     = document.getElementById('espBanner');
+  var bannerSub  = document.getElementById('espBannerSub');
+  var bannerBadge= document.getElementById('espBannerBadge');
+  var scBadge    = document.getElementById('sc-esp-badge');
+  var scVal      = document.getElementById('sc-esp-val');
+  var scSeen     = document.getElementById('sc-esp-seen');
+  var hwEsp      = document.getElementById('hw_esp32');
+  var hwSeen     = document.getElementById('hw_esp_seen');
+  var spEsp      = document.getElementById('sp_esp32');
+  var spSeen     = document.getElementById('sp_esp_seen');
+  var mEsp       = document.getElementById('m_esp32');
+  var mSeen      = document.getElementById('m_esp32_seen');
+  var stDot      = document.getElementById('espStatusDot');
+  var stBadge    = document.getElementById('espStatusBadge');
+  var stTxt      = document.getElementById('espStatusTxt');
+  var stLabel    = document.getElementById('espStatusLabel');
+
+  if (online) {
+    if (pill)  pill.className = 'conn-pill online';
+    if (pillTxt) pillTxt.textContent = 'ESP32 ONLINE';
+    if (banner) banner.className = 'conn-banner esp-online';
+    if (bannerSub) bannerSub.textContent = 'Device active · Last heartbeat ' + seenAgo;
+    if (bannerBadge) bannerBadge.textContent = 'ONLINE';
+    if (scBadge) { scBadge.textContent = 'ONLINE'; scBadge.className = 'stat-trend up'; }
+    if (scVal)  scVal.textContent = 'ONLINE';
+    if (hwEsp)  { hwEsp.textContent = 'ONLINE'; hwEsp.className = 's-badge online'; }
+    if (spEsp)  { spEsp.textContent = 'ONLINE'; spEsp.className = 's-badge online'; }
+    if (mEsp)   { mEsp.textContent = 'ONLINE'; mEsp.className = 's-badge online'; }
+    if (stDot)  stDot.className = 'status-dot';
+    if (stBadge){ stBadge.textContent = 'ONLINE'; stBadge.className = 's-badge online'; }
+    if (stLabel) stLabel.textContent = 'ESP32 Online';
+    if (stTxt)  stTxt.textContent = 'Device active · heartbeat ' + seenAgo;
+  } else if (isStale) {
+    if (pill)  pill.className = 'conn-pill warn';
+    if (pillTxt) pillTxt.textContent = 'ESP32 STALE';
+    if (banner) banner.className = 'conn-banner esp-stale';
+    if (bannerSub) bannerSub.textContent = 'Last contact ' + seenAgo + ' — may have disconnected';
+    if (bannerBadge) bannerBadge.textContent = 'STALE';
+    if (scBadge) { scBadge.textContent = 'STALE'; scBadge.className = 'stat-trend neu'; }
+    if (scVal)  scVal.textContent = 'STALE';
+    if (hwEsp)  { hwEsp.textContent = 'STALE'; hwEsp.className = 's-badge warn'; }
+    if (spEsp)  { spEsp.textContent = 'STALE'; spEsp.className = 's-badge warn'; }
+    if (mEsp)   { mEsp.textContent = 'STALE'; mEsp.className = 's-badge warn'; }
+    if (stDot)  stDot.className = 'status-dot warn';
+    if (stBadge){ stBadge.textContent = 'STALE'; stBadge.className = 's-badge warn'; }
+    if (stLabel) stLabel.textContent = 'ESP32 Stale';
+    if (stTxt)  stTxt.textContent = 'Last seen ' + seenAgo + ' — check device';
+  } else {
+    if (pill)  pill.className = 'conn-pill offline';
+    if (pillTxt) pillTxt.textContent = 'ESP32 OFFLINE';
+    if (banner) banner.className = 'conn-banner esp-offline';
+    if (bannerSub) bannerSub.textContent = secSince !== null ? 'Last seen ' + seenAgo + ' — check WiFi and power' : 'No data received';
+    if (bannerBadge) bannerBadge.textContent = 'OFFLINE';
+    if (scBadge) { scBadge.textContent = 'OFFLINE'; scBadge.className = 'stat-trend down'; }
+    if (scVal)  scVal.textContent = 'OFFLINE';
+    if (hwEsp)  { hwEsp.textContent = 'OFFLINE'; hwEsp.className = 's-badge offline'; }
+    if (spEsp)  { spEsp.textContent = 'OFFLINE'; spEsp.className = 's-badge offline'; }
+    if (mEsp)   { mEsp.textContent = 'OFFLINE'; mEsp.className = 's-badge offline'; }
+    if (stDot)  stDot.className = 'status-dot off';
+    if (stBadge){ stBadge.textContent = 'OFFLINE'; stBadge.className = 's-badge offline'; }
+    if (stLabel) stLabel.textContent = 'ESP32 Offline';
+    if (stTxt)  stTxt.textContent = secSince !== null ? 'Last seen ' + seenAgo : 'No data — check WiFi and power';
+  }
+
+  var seenStr = secSince !== null ? seenAgo : '--';
+  if (scSeen) scSeen.textContent = 'Last seen: ' + seenStr;
+  if (hwSeen) hwSeen.textContent = seenStr;
+  if (spSeen) spSeen.textContent = 'Last seen: ' + seenStr;
+  if (mSeen)  mSeen.textContent  = seenStr;
+}
+
+// ════════════════════════════════════════════════
+// REMOTE COMMAND SYSTEM
+// ════════════════════════════════════════════════
+async function sendCommand(cmd) {
+  if (!_sbConnected || !_sb) {
+    showToast('⚠️', 'Supabase not connected — cannot send command.', 'amber');
+    log('warn', 'Command "' + cmd + '" blocked — Supabase not connected.');
+    return;
+  }
+
+  log('action', 'Sending command: ' + cmd);
+  showToast('📡', 'Sending ' + cmd + '...', 'blue');
+
+  var res = await _sb.from('bin_commands').insert([{
+    device_id: DEVICE_ID, command: cmd, status: 'pending'
+  }]);
+
+  if (res.error) {
+    log('danger', 'Command failed to queue: ' + res.error.message);
+    showToast('❌', 'Send failed: ' + res.error.message, 'red');
+  } else {
+    log('info', 'Command queued: ' + cmd + ' — ESP32 will execute on next poll (~3s).');
+    showToast('✅', cmd + ' queued — ESP32 executing soon', 'em');
+    addNotif('🕹️', 'Command sent: ' + cmd);
+    setTimeout(refreshCmdQueue, 800);
+    setTimeout(refreshCmdQueue, 4000);  // refresh again after ESP32 likely executed
+  }
+}
+
+async function refreshCmdQueue() {
+  if (!_sb || !_sbConnected) {
+    var tbody = document.getElementById('cmdQueueBody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:18px;font-size:0.72rem;">⚠️ Supabase not connected</td></tr>';
+    return;
+  }
+  var res = await _sb.from('bin_commands').select('*').eq('device_id', DEVICE_ID).order('created_at', {ascending:false}).limit(20);
+  if (res.error || !res.data) return;
+
+  var tbody    = document.getElementById('cmdQueueBody');
+  var countEl  = document.getElementById('cmdQueueCount');
+  if (!tbody) return;
+  if (countEl) countEl.textContent = '(' + res.data.length + ' of last 20)';
+
+  if (res.data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:18px;">No commands yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = res.data.map(function(c, i) {
+    var cls    = c.status === 'executed' ? 'executed' : c.status === 'failed' ? 'failed' : 'pending';
+    var execAt = c.executed_at ? new Date(c.executed_at).toLocaleTimeString('en-PH') : '—';
+    return '<tr>' +
+      '<td style="color:var(--text3);">' + (i+1) + '</td>' +
+      '<td style="color:var(--text);font-weight:500;">' + c.command + '</td>' +
+      '<td><span class="cmd-status ' + cls + '">' + c.status.toUpperCase() + '</span></td>' +
+      '<td>' + new Date(c.created_at).toLocaleTimeString('en-PH') + '</td>' +
+      '<td>' + execAt + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+async function clearCmdQueue() {
+  if (!_sb || !_sbConnected) return;
+  await _sb.from('bin_commands').delete().eq('device_id', DEVICE_ID).eq('status', 'executed');
+  refreshCmdQueue();
+  showToast('🗑', 'Executed commands cleared.', 'em');
+}
+
+// ════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════
 var S = {
-  bio:    { lvl:0, cnt:0, lidOpen:false, usActive:false, disposed:false },
-  nonbio: { lvl:0, cnt:0, lidOpen:false, usActive:false, disposed:false },
-  db: true,
-  sidebarCollapsed: false,
-  logs: [],
-  startTime: Date.now(),
-  notifications: []
+  bio:    { lvl: 0, rawMM: null, cnt: 0, lidOpen: false, usActive: false },
+  nonbio: { lvl: 0, rawMM: null, cnt: 0, lidOpen: false, usActive: false },
+  sidebarCollapsed: false, logs: [], startTime: Date.now(), notifications: []
 };
+window._alertedBio75=false; window._alertedBio100=false;
+window._alertedNB75=false;  window._alertedNB100=false;
 
-/* ════════════════════════════════════════════
-   GAS UI helpers
-════════════════════════════════════════════ */
-function updateGasIndicator() {
-  var dot = document.getElementById('gasNavDot');
-  var txt = document.getElementById('gasNavTxt');
-  var sc  = document.getElementById('sc-gas-status');
-  var mGas = document.getElementById('m_gas');
-  var statusEl = document.getElementById('gasConfigStatus');
-
-  if (GAS.isConfigured()) {
-    if (dot) { dot.style.background='var(--em)'; dot.style.boxShadow='0 0 8px var(--em)'; dot.style.animation='pls 2s ease-in-out infinite'; }
-    if (txt) { txt.textContent='GAS READY'; txt.style.color='var(--em)'; }
-    if (sc)  { sc.textContent='READY'; sc.style.color='var(--em)'; }
-    if (mGas){ mGas.textContent='READY'; mGas.className='s-badge online'; }
-    if (statusEl){ statusEl.textContent='GAS configured — emails will fire automatically on threshold breach.'; statusEl.className='gas-status ok'; }
-  } else {
-    if (dot) { dot.style.background='var(--text3)'; dot.style.boxShadow='none'; dot.style.animation='none'; }
-    if (txt) { txt.textContent='GAS'; txt.style.color='var(--text2)'; }
-    if (sc)  { sc.textContent='NOT CONFIGURED'; sc.style.color='var(--text3)'; }
-    if (mGas){ mGas.textContent='NOT SET'; mGas.className='s-badge idle'; }
-    if (statusEl){ statusEl.textContent='No URL configured — enter GAS Web App URL above to enable.'; statusEl.className='gas-status idle'; }
-  }
-}
-
-function saveGASConfig() {
-  var url    = (document.getElementById('gasUrlInput') ? document.getElementById('gasUrlInput').value : '').trim();
-  var emails = (document.getElementById('alertEmails') ? document.getElementById('alertEmails').value : '').trim();
-  GAS.url        = url;
-  GAS.recipients = emails;
-  localStorage.setItem('sb_gas_url', url);
-  localStorage.setItem('sb_alert_emails', emails);
-  updateGasIndicator();
-  if (GAS.isConfigured()) {
-    showToast('&#x2705;', 'GAS config saved — alerts are now active!', 'em');
-    log('action', 'GAS relay configured. Auto-alerts enabled.');
-  } else {
-    showToast('&#x26A0;', 'Enter a valid GAS Web App URL to activate alerts.', 'amber');
-  }
-}
-
-async function testEmail() {
-  if (!GAS.isConfigured()) { showToast('&#x26A0;', 'Configure GAS URL first.', 'amber'); return; }
-  showToast('&#x1F4E7;', 'Sending test email via GAS...', 'blue');
-  log('action', 'Test email triggered.');
-  var result = await GAS.send('TEST BIN', 99, 'warn');
-  if (result.ok) {
-    showToast('&#x2705;', 'Test email sent successfully!', 'em');
-    log('info', 'Test email delivered via GAS relay.');
-  } else {
-    showToast('&#x274C;', 'Email failed: ' + (result.reason || result.msg || 'unknown'), 'red');
-    log('danger', 'Test email FAILED: ' + (result.reason || result.msg || 'unknown error'));
-  }
-}
-
-async function manualFullAlert(t) {
-  var name = t === 'bio' ? 'Biodegradable' : 'Non-Biodegradable';
-  showToast('&#x1F4E7;', 'Sending full alert for ' + name + '...', 'amber');
-  await sendGasAlert(name, 100, 'full');
-}
-
-async function sendGasAlert(binName, level, type) {
-  var prefGas = document.getElementById('pref-gas');
-  if (prefGas && !prefGas.checked) return;
-  var result = await GAS.send(binName, level, type);
-  if (result.ok) {
-    log('action', 'GAS email sent — ' + type.toUpperCase() + ' alert for ' + binName + ' (' + level + '%).');
-    showToast('&#x1F4E7;', 'Email alert sent: ' + binName + ' ' + type, 'em');
-  } else if (result.reason === 'not_configured') {
-    log('warn', 'GAS not configured — email skipped for ' + binName + ' ' + type + ' alert.');
-  } else {
-    log('danger', 'GAS email FAILED for ' + binName + ': ' + (result.reason || result.msg || 'unknown'));
-    showToast('&#x274C;', 'Email failed for ' + binName + '. Check GAS URL.', 'red');
-  }
-}
-
-function copyGasScript() {
-  var code = document.getElementById('gasScriptCode') ? document.getElementById('gasScriptCode').innerText : '';
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(code).then(function() {
-      showToast('&#x1F4CB;', 'Apps Script code copied to clipboard!', 'em');
-    }).catch(function() {
-      showToast('&#x26A0;', 'Copy failed — please copy manually.', 'amber');
-    });
-  }
-}
-
-function clearGasHistory() {
-  GAS.history = [];
-  GAS._refreshHistoryUI();
-  showToast('&#x1F5D1;', 'Email history cleared.', 'em');
-}
-
-/* ════════════════════════════════════════════
-   CLOCK & UPTIME
-════════════════════════════════════════════ */
+// ════════════════════════════════════════════════
+// CLOCK & UPTIME
+// ════════════════════════════════════════════════
 function updateClock() {
   var now = new Date();
-  var d = now.toLocaleDateString('en-PH',{weekday:'short',month:'short',day:'2-digit'});
-  var t = now.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  document.getElementById('nbClock').textContent = d + '  ' + t;
-  var up = Math.floor((Date.now()-S.startTime)/1000);
-  var h = String(Math.floor(up/3600)).padStart(2,'0');
-  var m = String(Math.floor((up%3600)/60)).padStart(2,'0');
-  var s = String(up%60).padStart(2,'0');
-  var el = document.getElementById('uptime'); if(el) el.textContent = h+':'+m+':'+s;
+  var el = document.getElementById('nbClock');
+  if (el) el.textContent = now.toLocaleDateString('en-PH',{weekday:'short',month:'short',day:'2-digit'}) + '  ' + now.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  var up = Math.floor((Date.now() - S.startTime) / 1000);
+  var uEl = document.getElementById('uptime');
+  if (uEl) uEl.textContent = String(Math.floor(up/3600)).padStart(2,'0') + ':' + String(Math.floor((up%3600)/60)).padStart(2,'0') + ':' + String(up%60).padStart(2,'0');
 }
 setInterval(updateClock, 1000);
 
-/* ════════════════════════════════════════════
-   SIDEBAR & THEME
-════════════════════════════════════════════ */
+// ════════════════════════════════════════════════
+// SIDEBAR & THEME
+// ════════════════════════════════════════════════
 function toggleSidebar() {
   S.sidebarCollapsed = !S.sidebarCollapsed;
   document.getElementById('sidebar').classList.toggle('collapsed', S.sidebarCollapsed);
@@ -1032,388 +1103,375 @@ function toggleTheme() {
   var html = document.documentElement;
   var isDark = html.dataset.theme === 'dark';
   html.dataset.theme = isDark ? 'light' : 'dark';
-  document.getElementById('themeBtn').textContent = isDark ? '&#x2600;&#xFE0F;' : '&#x1F319;';
-  showToast(isDark ? '&#x2600;&#xFE0F;' : '&#x1F319;', (isDark?'Light':'Dark')+' mode enabled', 'em');
+  document.getElementById('themeBtn').innerHTML = isDark ? '☀️' : '🌙';
 }
 
-/* ════════════════════════════════════════════
-   PAGE NAVIGATION
-════════════════════════════════════════════ */
+// ════════════════════════════════════════════════
+// PAGE NAVIGATION
+// ════════════════════════════════════════════════
 var pageTitles = {
-  dashboard:'Dashboard <span>/ Overview<\/span>',
-  monitor:'Live Monitoring <span>/ Real-time<\/span>',
-  analytics:'Analytics <span>/ Insights<\/span>',
-  sensors:'Sensor Status <span>/ Hardware<\/span>',
-  logs:'Activity Logs <span>/ Events<\/span>',
-  notifications:'Notifications <span>/ Alerts<\/span>',
-  gas:'GAS Email Alerts <span>/ Automation<\/span>',
-  supabase:'Supabase <span>/ Integration<\/span>',
-  settings:'Settings <span>/ Config<\/span>',
-  reports:'Reports <span>/ PDF Export<\/span>'
+  dashboard:     'Dashboard <span>/ Overview</span>',
+  monitor:       'Live Monitoring <span>/ Real-time</span>',
+  analytics:     'Analytics <span>/ Insights</span>',
+  control:       'Remote Control <span>/ ESP32 Commands</span>',
+  sensors:       'Sensor Status <span>/ Hardware</span>',
+  logs:          'Activity Logs <span>/ Events</span>',
+  notifications: 'Notifications <span>/ Alerts</span>',
+  settings:      'Settings <span>/ Config</span>',
+  reports:       'Reports <span>/ PDF Export</span>'
 };
 function goPage(id, el) {
-  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
-  document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
-  var pg = document.getElementById('page-'+id); if(pg) pg.classList.add('active');
-  if(el) el.classList.add('active');
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  var pg = document.getElementById('page-' + id); if (pg) pg.classList.add('active');
+  if (el) el.classList.add('active');
   document.getElementById('nbTitle').innerHTML = pageTitles[id] || id;
-  if (id === 'analytics') initCharts();
-  if (id === 'logs') syncFullLog();
-  if (id === 'notifications') { renderNotifPage(); GAS._refreshHistoryUI(); }
+  if (id === 'analytics')     initCharts();
+  if (id === 'logs')          syncFullLog();
+  if (id === 'notifications') renderNotifPage();
+  if (id === 'control')       refreshCmdQueue();
 }
 
-/* ════════════════════════════════════════════
-   NOTIFICATIONS
-════════════════════════════════════════════ */
+// ════════════════════════════════════════════════
+// NOTIFICATIONS
+// ════════════════════════════════════════════════
 function renderNotifDropdown() {
-  var list = document.getElementById('notifList');
-  if(!list) return;
-  if(S.notifications.length === 0) {
-    list.innerHTML = '<div style="padding:16px;font-size:0.74rem;color:var(--text2);text-align:center;">No notifications.<\/div>';
-    return;
-  }
-  list.innerHTML = S.notifications.map(function(n){
-    return '<div class="notif-item' + (n.unread?' unread':'') + '"><div class="ni-ico">' + n.ico + '<\/div><div><div class="ni-msg">' + n.msg + '<\/div><div class="ni-time">' + n.time + '<\/div><\/div><\/div>';
+  var list = document.getElementById('notifList'); if (!list) return;
+  if (S.notifications.length === 0) { list.innerHTML = '<div style="padding:16px;font-size:0.74rem;color:var(--text2);text-align:center;">No notifications.</div>'; return; }
+  list.innerHTML = S.notifications.map(function(n) {
+    return '<div class="notif-item' + (n.unread ? ' unread' : '') + '"><div class="ni-ico">' + n.ico + '</div><div><div class="ni-msg">' + n.msg + '</div><div class="ni-time">' + n.time + '</div></div></div>';
   }).join('');
 }
 function renderNotifPage() {
-  var list = document.getElementById('notifPageList'); if(!list) return;
-  if(S.notifications.length === 0) {
-    list.innerHTML = '<div style="padding:16px;font-size:0.74rem;color:var(--text2);text-align:center;">No notifications yet.<\/div>';
-    return;
-  }
-  list.innerHTML = S.notifications.map(function(n){
-    return '<div class="notif-item' + (n.unread?' unread':'') + '" style="border-radius:0;"><div class="ni-ico">' + n.ico + '<\/div><div><div class="ni-msg" style="font-size:0.8rem;">' + n.msg + '<\/div><div class="ni-time">' + n.time + '<\/div><\/div>' + (n.unread?'<span style="width:7px;height:7px;border-radius:50%;background:var(--em);flex-shrink:0;margin-left:auto;"><\/span>':'') + '<\/div>';
+  var list = document.getElementById('notifPageList'); if (!list) return;
+  if (S.notifications.length === 0) { list.innerHTML = '<div style="font-size:0.75rem;color:var(--text2);text-align:center;padding:20px 0;">No notifications yet.</div>'; return; }
+  list.innerHTML = S.notifications.map(function(n) {
+    return '<div class="notif-item' + (n.unread ? ' unread' : '') + '" style="border-radius:0;"><div class="ni-ico">' + n.ico + '</div><div style="flex:1;"><div class="ni-msg" style="font-size:0.8rem;">' + n.msg + '</div><div class="ni-time">' + n.time + '</div></div>' + (n.unread ? '<span class="notif-unread-dot"></span>' : '') + '</div>';
   }).join('');
 }
 function toggleNotif() {
   var p = document.getElementById('notifPanel');
-  p.style.display = p.style.display==='none'?'block':'none';
-  if(p.style.display==='block') renderNotifDropdown();
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  if (p.style.display === 'block') renderNotifDropdown();
 }
 function markAllRead() {
-  S.notifications.forEach(function(n){ n.unread=false; });
-  document.getElementById('navBadge').style.display='none';
-  document.getElementById('notifCount').style.display='none';
+  S.notifications.forEach(function(n) { n.unread = false; });
+  document.getElementById('navBadge').style.display   = 'none';
+  document.getElementById('notifCount').style.display = 'none';
   renderNotifDropdown(); renderNotifPage();
-  showToast('&#x2705;','All notifications marked as read','em');
 }
 function addNotif(ico, msg) {
-  S.notifications.unshift({id:Date.now(), ico:ico, msg:msg, time:'just now', unread:true});
-  var cnt = S.notifications.filter(function(n){return n.unread;}).length;
-  var b1=document.getElementById('notifCount'); if(b1){b1.textContent=cnt;b1.style.display=cnt?'grid':'none';}
-  var b2=document.getElementById('navBadge');   if(b2){b2.textContent=cnt;b2.style.display=cnt?'inline':'none';}
+  S.notifications.unshift({ id: Date.now(), ico: ico, msg: msg, time: 'just now', unread: true });
+  var cnt = S.notifications.filter(function(n) { return n.unread; }).length;
+  var b1 = document.getElementById('notifCount'); if (b1) { b1.textContent = cnt; b1.style.display = cnt ? 'grid' : 'none'; }
+  var b2 = document.getElementById('navBadge');   if (b2) { b2.textContent = cnt; b2.style.display = cnt ? 'inline' : 'none'; }
 }
 document.addEventListener('click', function(e) {
   if (!e.target.closest('#notifBtn') && !e.target.closest('#notifPanel')) {
-    var p=document.getElementById('notifPanel'); if(p) p.style.display='none';
+    var p = document.getElementById('notifPanel'); if (p) p.style.display = 'none';
   }
 });
 
-/* ════════════════════════════════════════════
-   RENDER BIN STATE
-════════════════════════════════════════════ */
+// ════════════════════════════════════════════════
+// BIN RENDER
+// ════════════════════════════════════════════════
 function renderBin(t) {
-  var s=S[t]; var isB=t==='bio'; var lvl=s.lvl;
-  var cls=lvl>=100?'full':lvl>=75?'warn':'ok';
-  var numEl=document.getElementById(isB?'bioNum':'nbNum');
-  var fillEl=document.getElementById(isB?'bioFill':'nbFill');
-  if(numEl){numEl.textContent=lvl+'%';numEl.className='fill-pct '+cls;}
-  if(fillEl){fillEl.style.width=lvl+'%';fillEl.className='fill-bar '+cls;}
-  var pre=isB?'b':'n';
-  var z0=document.getElementById(pre+'z0'),z1=document.getElementById(pre+'z1'),z2=document.getElementById(pre+'z2');
-  if(z0){
-    z0.style.fill=lvl>0?'rgba(0,214,143,0.25)':'transparent';
-    z1.style.fill=lvl>=25?'rgba(245,158,11,0.3)':'transparent';
-    z2.style.fill=lvl>=75?'rgba(239,68,68,0.35)':'transparent';
-    var blink=lvl>=100?'bar-blink 0.6s ease-in-out infinite alternate':'';
+  var s = S[t], isB = (t === 'bio'), lvl = s.lvl;
+  var cls = lvl >= 100 ? 'full' : lvl >= 75 ? 'warn' : 'ok';
+  var pre = isB ? 'b' : 'n';
+
+  var numEl = document.getElementById(isB ? 'bioNum' : 'nbNum');
+  if (numEl) { numEl.textContent = lvl + '%'; numEl.className = 'fill-pct ' + cls; }
+  var fillEl = document.getElementById(isB ? 'bioFill' : 'nbFill');
+  if (fillEl) { fillEl.style.width = lvl + '%'; fillEl.className = 'fill-bar ' + cls; }
+
+  var z0 = document.getElementById(pre+'z0'), z1 = document.getElementById(pre+'z1'), z2 = document.getElementById(pre+'z2');
+  if (z0) {
+    z0.style.fill = lvl > 0   ? 'rgba(0,214,143,0.25)' : 'transparent';
+    z1.style.fill = lvl >= 25 ? 'rgba(245,158,11,0.3)'  : 'transparent';
+    z2.style.fill = lvl >= 75 ? 'rgba(239,68,68,0.35)'  : 'transparent';
+    var blink = lvl >= 100 ? 'bar-blink 0.6s ease-in-out infinite alternate' : '';
     [z0,z1,z2].forEach(function(z){z.style.animation=blink;});
   }
-  var l1=document.getElementById(isB?'bioLed1':'nbLed1'),l2=document.getElementById(isB?'bioLed2':'nbLed2'),ll=document.getElementById(isB?'bioLedLbl':'nbLedLbl');
-  var full=lvl>=100;
-  if(l1){l1.className=l2.className='led-dot '+(full?'r':'g');ll.textContent=full?'BIN FULL':'HAS SPACE';}
-  var lid=document.getElementById(isB?'bioLid':'nbLid');
-  if(lid) lid.style.transform=s.lidOpen?'rotate(-55deg)':'rotate(0deg)';
-  ['1','2','3'].forEach(function(n){var r=document.getElementById((isB?'bio':'nb')+'Radar'+n);if(r) r.className='radar-ring'+(s.usActive?' ':' off');});
-  var usEl=document.getElementById(isB?'bioUS':'nbUS'),srvEl=document.getElementById(isB?'bioSrv':'nbSrv'),cntEl=document.getElementById(isB?'bioCnt':'nbCnt'),mmEl=document.getElementById(isB?'bioMM':'nbMM');
-  if(usEl){usEl.textContent=s.usActive?'DETECT':'IDLE';usEl.className='cv '+(s.usActive?'b':'g');}
-  if(srvEl){srvEl.textContent=s.lidOpen?'OPEN':'CLOSED';srvEl.className='cv '+(s.lidOpen?'a':'g');}
-  if(cntEl) cntEl.textContent=s.cnt;
-  if(mmEl) mmEl.textContent=Math.round((1-lvl/100)*400)+' mm';
-  var alertEl=document.getElementById(isB?'bioAlert':'nbAlert');
-  if(alertEl) alertEl.classList.toggle('on',full&&!s.disposed);
-  var dBtn=document.getElementById(isB?'bioDisposeBtn':'nbDisposeBtn');
-  if(dBtn) dBtn.style.display=(full&&!s.disposed)?'flex':'none';
+
+  var full = lvl >= 100;
+  var l1   = document.getElementById(isB ? 'bioLed1' : 'nbLed1');
+  var l2   = document.getElementById(isB ? 'bioLed2' : 'nbLed2');
+  var ll   = document.getElementById(isB ? 'bioLedLbl' : 'nbLedLbl');
+  if (l1) { l1.className = l2.className = 'led-dot ' + (full ? 'r' : 'g'); ll.textContent = full ? 'BIN FULL' : 'HAS SPACE'; }
+
+  var lid = document.getElementById(isB ? 'bioLid' : 'nbLid');
+  if (lid) lid.style.transform = s.lidOpen ? 'rotate(-55deg)' : 'rotate(0deg)';
+
+  ['1','2','3'].forEach(function(n) {
+    var r = document.getElementById((isB ? 'bio' : 'nb') + 'Radar' + n);
+    if (r) r.className = 'radar-ring' + (s.usActive ? '' : ' off');
+  });
+
+  var usEl  = document.getElementById(isB ? 'bioUS'  : 'nbUS');
+  var srvEl = document.getElementById(isB ? 'bioSrv' : 'nbSrv');
+  var cntEl = document.getElementById(isB ? 'bioCnt' : 'nbCnt');
+  var mmEl  = document.getElementById(isB ? 'bioMM'  : 'nbMM');
+  if (usEl)  { usEl.textContent  = s.usActive ? 'DETECT' : 'IDLE'; usEl.className = 'cv ' + (s.usActive ? 'b' : 'g'); }
+  if (srvEl) { srvEl.textContent = s.lidOpen  ? 'OPEN'   : 'CLOSED'; srvEl.className = 'cv ' + (s.lidOpen ? 'a' : 'g'); }
+  if (cntEl) cntEl.textContent = s.cnt;
+  if (mmEl)  mmEl.textContent  = s.rawMM !== null ? s.rawMM + ' mm' : '-- mm';
+
+  var alertEl = document.getElementById(isB ? 'bioAlert' : 'nbAlert');
+  if (alertEl) alertEl.classList.toggle('on', full);
+  var dBtn = document.getElementById(isB ? 'bioDisposeBtn' : 'nbDisposeBtn');
+  if (dBtn) dBtn.style.display = full ? 'flex' : 'none';
+
   updateAllUI();
 }
 
 function updateAllUI() {
-  var b=S.bio,nb=S.nonbio,bLvl=b.lvl,nbLvl=nb.lvl;
-  var bFull=bLvl>=100,nbFull=nbLvl>=100,avg=Math.round((bLvl+nbLvl)/2);
-  var sc_cap=document.getElementById('sc-cap'),sc_bio=document.getElementById('sc-bio'),sc_nb=document.getElementById('sc-nb');
-  if(sc_cap) sc_cap.textContent=avg+'%';
-  if(sc_bio) sc_bio.textContent=bLvl+'%';
-  if(sc_nb)  sc_nb.textContent=nbLvl+'%';
-  var bTrEl=document.getElementById('sc-bio-tr'),nTrEl=document.getElementById('sc-nb-tr');
-  if(bTrEl){bTrEl.textContent=bFull?'FULL':bLvl>=75?'HIGH':'OK';bTrEl.className='stat-trend '+(bFull?'down':bLvl>=75?'neu':'up');}
-  if(nTrEl){nTrEl.textContent=nbFull?'FULL':nbLvl>=75?'HIGH':'OK';nTrEl.className='stat-trend '+(nbFull?'down':nbLvl>=75?'neu':'up');}
-  function setRing(id,pct,color){var el=document.getElementById(id);if(!el)return;el.style.strokeDashoffset=150.8*(1-pct/100);el.style.stroke=color||'var(--em)';var pEl=document.getElementById(id+'-pct');if(pEl){pEl.textContent=pct+'%';pEl.style.color=color||'var(--em)';}}
-  setRing('ring-cap',avg,avg>=100?'var(--red)':avg>=75?'var(--amber)':'var(--em)');
-  setRing('ring-bio',bLvl,bLvl>=100?'var(--red)':bLvl>=75?'var(--amber)':'var(--em)');
-  setRing('ring-nb',nbLvl,nbLvl>=100?'var(--red)':nbLvl>=75?'var(--amber)':'var(--blue)');
-  var bO=b.lidOpen,nbO=nb.lidOpen,anyFull=bFull||nbFull;
-  var srvEl=document.getElementById('sc-servo');if(srvEl) srvEl.textContent='Bio:'+(bO?'OPEN':'CLSD')+' NB:'+(nbO?'OPEN':'CLSD');
-  var hw_us_bio=document.getElementById('hw_us_bio'),hw_us_nb=document.getElementById('hw_us_nb');
-  if(hw_us_bio){hw_us_bio.textContent=b.usActive?'OBJECT DETECTED':'IDLE';hw_us_bio.className='s-badge '+(b.usActive?'active':'idle');}
-  if(hw_us_nb){hw_us_nb.textContent=nb.usActive?'OBJECT DETECTED':'IDLE';hw_us_nb.className='s-badge '+(nb.usActive?'active':'idle');}
-  var vbEl=document.getElementById('hw_vl_bio');if(vbEl) vbEl.textContent=Math.round((1-bLvl/100)*400)+' mm';
-  var vnEl=document.getElementById('hw_vl_nb'); if(vnEl) vnEl.textContent=Math.round((1-nbLvl/100)*400)+' mm';
-  var sEl=document.getElementById('hw_srv');if(sEl) sEl.textContent='Bio:'+(bO?'OPEN':'CLSD')+' NB:'+(nbO?'OPEN':'CLSD');
-  var buzzEl=document.getElementById('buzzerBadge');if(buzzEl){buzzEl.textContent=anyFull?'BUZZING':'SILENT';buzzEl.className='s-badge '+(anyFull?'danger':'idle');}
-  var bSt=bFull?'[FULL]':bLvl>=75?'[HIGH]':'[OK]',nSt=nbFull?'[FULL]':nbLvl>=75?'[HIGH]':'[OK]';
-  var ol1=document.getElementById('ol1');if(ol1){ol1.textContent='BIO:    '+String(bLvl).padStart(3,' ')+'%  '+bSt;ol1.className='oled-line '+(bFull?'danger':bLvl>=75?'warn':'');}
-  var ol2=document.getElementById('ol2');if(ol2){ol2.textContent='NONBIO: '+String(nbLvl).padStart(3,' ')+'%  '+nSt;ol2.className='oled-line '+(nbFull?'danger':nbLvl>=75?'warn':'');}
-  var ol3=document.getElementById('ol3');if(ol3){var st=bFull||nbFull?'ACTION REQUIRED':bLvl>=75||nbLvl>=75?'NEAR CAPACITY':'ALL CLEAR';ol3.textContent='STATUS: '+st;ol3.className='oled-line '+(bFull||nbFull?'danger':bLvl>=75||nbLvl>=75?'warn':'');}
-  [['m_vl_bio',Math.round((1-bLvl/100)*400)+' mm'],['m_vl_nb',Math.round((1-nbLvl/100)*400)+' mm'],['m_pct_bio',bLvl+'%'],['m_pct_nb',nbLvl+'%'],['m_us_bio',b.usActive?'DETECT':'IDLE'],['m_us_nb',nb.usActive?'DETECT':'IDLE'],['m_srv_bio',bO?'OPEN':'CLOSED'],['m_srv_nb',nbO?'OPEN':'CLOSED'],['m_led_bio',bFull?'2x RED':'2x GREEN'],['m_led_nb',nbFull?'2x RED':'2x GREEN'],['m_buzzer',anyFull?'BUZZING':'SILENT']].forEach(function(pair){var el=document.getElementById(pair[0]);if(el)el.textContent=pair[1];});
-  [['sp_us_bio',b.usActive?'DETECTED':'IDLE'],['sp_us_nb',nb.usActive?'DETECTED':'IDLE'],['sp_vl_bio',Math.round((1-bLvl/100)*400)+' mm'],['sp_vl_nb',Math.round((1-nbLvl/100)*400)+' mm'],['sp_srv_bio',bO?'OPEN':'CLOSED'],['sp_srv_nb',nbO?'OPEN':'CLOSED'],['sp_led',bFull&&nbFull?'4x RED':bFull||nbFull?'2x RED 2x GRN':'4x GREEN'],['sp_buzz',anyFull?'BUZZING':'SILENT']].forEach(function(pair){var el=document.getElementById(pair[0]);if(el)el.textContent=pair[1];});
-  var srvBt=document.getElementById('sp_srv_bio_t');if(srvBt) srvBt.textContent=bO?'90 deg':'0 deg';
-  var srvNt=document.getElementById('sp_srv_nb_t');if(srvNt) srvNt.textContent=nbO?'90 deg':'0 deg';
+  var b = S.bio, nb = S.nonbio;
+  var bLvl = b.lvl, nbLvl = nb.lvl, avg = Math.round((bLvl + nbLvl) / 2);
+  var bFull = bLvl >= 100, nbFull = nbLvl >= 100, anyFull = bFull || nbFull;
+  function g(id) { return document.getElementById(id); }
+  function setTxt(id, txt) { var e = g(id); if (e) e.textContent = txt; }
+
+  setTxt('sc-cap', avg + '%'); setTxt('sc-bio', bLvl + '%'); setTxt('sc-nb', nbLvl + '%');
+
+  var bTr = g('sc-bio-tr'), nTr = g('sc-nb-tr'), cTr = g('sc-cap-tr');
+  if (bTr) { bTr.textContent = bFull ? 'FULL' : bLvl >= 75 ? 'HIGH' : 'OK'; bTr.className = 'stat-trend ' + (bFull ? 'down' : bLvl >= 75 ? 'neu' : 'up'); }
+  if (nTr) { nTr.textContent = nbFull ? 'FULL' : nbLvl >= 75 ? 'HIGH' : 'OK'; nTr.className = 'stat-trend ' + (nbFull ? 'down' : nbLvl >= 75 ? 'neu' : 'up'); }
+  if (cTr) { cTr.textContent = avg + '%'; cTr.className = 'stat-trend ' + (avg >= 100 ? 'down' : avg >= 75 ? 'neu' : 'up'); }
+
+  function setRing(id, pct, color) {
+    var el = g(id); if (!el) return;
+    el.style.strokeDashoffset = 150.8 * (1 - pct / 100);
+    el.style.stroke = color;
+    var pEl = g(id + '-pct'); if (pEl) { pEl.textContent = pct + '%'; pEl.style.color = color; }
+  }
+  setRing('ring-cap', avg,   avg   >= 100 ? 'var(--red)' : avg   >= 75 ? 'var(--amber)' : 'var(--em)');
+  setRing('ring-bio', bLvl,  bLvl  >= 100 ? 'var(--red)' : bLvl  >= 75 ? 'var(--amber)' : 'var(--em)');
+  setRing('ring-nb',  nbLvl, nbLvl >= 100 ? 'var(--red)' : nbLvl >= 75 ? 'var(--amber)' : 'var(--blue)');
+
+  setTxt('sc-servo', 'Bio:' + (b.lidOpen ? 'OPEN' : 'CLSD') + ' NB:' + (nb.lidOpen ? 'OPEN' : 'CLSD'));
+
+  if (g('hw_us_bio')) { g('hw_us_bio').textContent = b.usActive  ? 'DETECTED' : 'IDLE'; g('hw_us_bio').className = 's-badge ' + (b.usActive  ? 'active' : 'idle'); }
+  if (g('hw_us_nb'))  { g('hw_us_nb').textContent  = nb.usActive ? 'DETECTED' : 'IDLE'; g('hw_us_nb').className  = 's-badge ' + (nb.usActive ? 'active' : 'idle'); }
+  if (g('hw_vl_bio')) g('hw_vl_bio').textContent = b.rawMM  !== null ? b.rawMM  + ' mm' : '-- mm';
+  if (g('hw_vl_nb'))  g('hw_vl_nb').textContent  = nb.rawMM !== null ? nb.rawMM + ' mm' : '-- mm';
+  if (g('hw_srv'))    g('hw_srv').textContent = 'Bio:' + (b.lidOpen ? 'OPEN' : 'CLSD') + ' NB:' + (nb.lidOpen ? 'OPEN' : 'CLSD');
+  if (g('buzzerBadge')) { g('buzzerBadge').textContent = anyFull ? 'BUZZING' : 'SILENT'; g('buzzerBadge').className = 's-badge ' + (anyFull ? 'danger' : 'idle'); }
+
+  var bSt = bFull ? '[FULL]' : bLvl >= 75 ? '[HIGH]' : '[OK]';
+  var nSt = nbFull ? '[FULL]' : nbLvl >= 75 ? '[HIGH]' : '[OK]';
+  if (g('ol1')) { g('ol1').textContent = 'BIO:    ' + String(bLvl).padStart(3,' ') + '%  ' + bSt; g('ol1').className = 'oled-line ' + (bFull ? 'danger' : bLvl >= 75 ? 'warn' : ''); }
+  if (g('ol2')) { g('ol2').textContent = 'NONBIO: ' + String(nbLvl).padStart(3,' ') + '%  ' + nSt; g('ol2').className = 'oled-line ' + (nbFull ? 'danger' : nbLvl >= 75 ? 'warn' : ''); }
+  if (g('ol3')) { var st = bFull||nbFull ? 'ACTION REQUIRED' : bLvl>=75||nbLvl>=75 ? 'NEAR CAPACITY' : 'ALL CLEAR'; g('ol3').textContent = 'STATUS: ' + st; g('ol3').className = 'oled-line ' + (bFull||nbFull ? 'danger' : bLvl>=75||nbLvl>=75 ? 'warn' : ''); }
+
+  var pairs = [
+    ['m_vl_bio', b.rawMM !== null ? b.rawMM + ' mm' : '-- mm'],
+    ['m_vl_nb',  nb.rawMM !== null ? nb.rawMM + ' mm' : '-- mm'],
+    ['m_pct_bio', bLvl + '%'], ['m_pct_nb', nbLvl + '%'],
+    ['m_us_bio',  b.usActive  ? 'DETECT' : 'IDLE'],
+    ['m_us_nb',   nb.usActive ? 'DETECT' : 'IDLE'],
+    ['m_srv_bio', b.lidOpen  ? 'OPEN' : 'CLOSED'],
+    ['m_srv_nb',  nb.lidOpen ? 'OPEN' : 'CLOSED'],
+    ['m_led_bio', bFull  ? '2x RED' : '2x GREEN'],
+    ['m_led_nb',  nbFull ? '2x RED' : '2x GREEN'],
+    ['m_buzzer',  anyFull ? 'BUZZING' : 'SILENT'],
+    ['sp_us_bio', b.usActive  ? 'DETECTED' : 'IDLE'],
+    ['sp_us_nb',  nb.usActive ? 'DETECTED' : 'IDLE'],
+    ['sp_vl_bio', b.rawMM  !== null ? b.rawMM  + ' mm' : '-- mm'],
+    ['sp_vl_nb',  nb.rawMM !== null ? nb.rawMM + ' mm' : '-- mm'],
+    ['sp_srv_bio', b.lidOpen  ? 'OPEN' : 'CLOSED'],
+    ['sp_srv_nb',  nb.lidOpen ? 'OPEN' : 'CLOSED'],
+    ['sp_led',    bFull && nbFull ? '4x RED' : bFull||nbFull ? '2x RED 2x GRN' : '4x GREEN'],
+    ['sp_buzz',   anyFull ? 'BUZZING' : 'SILENT']
+  ];
+  pairs.forEach(function(pair) { var e = g(pair[0]); if (e) e.textContent = pair[1]; });
 }
 
-/* ════════════════════════════════════════════
-   BIN ACTIONS
-════════════════════════════════════════════ */
-function approach(t) {
-  var s=S[t],isB=t==='bio',name=isB?'Biodegradable':'Non-Biodegradable';
-  if(s.lvl>=100){log('warn',name+' bin full — lid locked. LED blinking red.');return;}
-  s.usActive=true;s.lidOpen=true;
-  log('info','Ultrasonic ('+name+'): object detected at <30cm, servo opening lid.');
+// ════════════════════════════════════════════════
+// SIMULATION
+// ════════════════════════════════════════════════
+function simApproach(t) {
+  var s = S[t], isB = (t === 'bio'), name = isB ? 'Biodegradable' : 'Non-Biodegradable';
+  if (s.lvl >= 100) { log('warn', name + ' bin full — lid locked.'); return; }
+  s.usActive = true; s.lidOpen = true;
+  log('info', '[SIM] Ultrasonic (' + name + '): object detected, lid opening.');
   renderBin(t);
-  setTimeout(function(){
-    var prev=s.lvl;
-    s.lvl=Math.min(100,s.lvl+Math.floor(Math.random()*12)+4);
-    s.cnt++;
-    log('info','Trash added to '+name+'. VL53L0X: '+Math.round((1-s.lvl/100)*400)+'mm, level: '+s.lvl+'%');
+  setTimeout(function() {
+    var prev = s.lvl;
+    s.lvl = Math.min(100, s.lvl + Math.floor(Math.random() * 12) + 4);
+    s.cnt++; s.rawMM = Math.round((1 - s.lvl / 100) * 260);
+    log('info', '[SIM] Trash added — VL53L0X: ' + s.rawMM + 'mm · Level: ' + s.lvl + '%');
     renderBin(t);
-    setTimeout(function(){s.usActive=false;s.lidOpen=false;log('info','Servo closed '+name+' lid automatically.');checkThreshold(t,prev);renderBin(t);},1500);
-  },900);
+    setTimeout(function() {
+      s.usActive = false; s.lidOpen = false;
+      log('info', '[SIM] Servo auto-closed ' + name + ' lid.');
+      checkThreshold(t, prev); renderBin(t);
+    }, 600);
+  }, 400);
 }
-
-function setLvl(t,pct){
-  var prev=S[t].lvl;
-  S[t].lvl=pct;
-  S[t].disposed=false;
-  checkThreshold(t,prev);
-  renderBin(t);
-  log('info',(t==='bio'?'Bio':'Non-Bio')+' bin set to '+pct+'%.');
+function simSetLvl(t, pct) {
+  var prev = S[t].lvl;
+  S[t].lvl = pct; S[t].rawMM = Math.round((1 - pct / 100) * 260);
+  checkThreshold(t, prev); renderBin(t);
+  log('info', '[SIM] ' + (t==='bio'?'Bio':'Non-Bio') + ' bin set to ' + pct + '%.');
 }
-
-async function checkThreshold(t, prev) {
-  var lvl=S[t].lvl, n=t==='bio'?'Biodegradable':'Non-Biodegradable';
-  if (lvl >= 100 && prev < 100) {
-    log('danger', n+' bin FULL. Lid locked. Buzzer ON. LEDs RED. Firing GAS alert...');
-    addNotif('&#x1F6A8;', n+' bin reached 100% — disposal required');
-    showToast('&#x1F6A8;', n+' bin is FULL! Email alert firing...', 'red');
-    await sendGasAlert(n, 100, 'full');
+function checkThreshold(t, prev) {
+  var lvl = S[t].lvl, n = (t==='bio') ? 'Biodegradable' : 'Non-Biodegradable';
+  var f75  = t==='bio' ? '_alertedBio75'  : '_alertedNB75';
+  var f100 = t==='bio' ? '_alertedBio100' : '_alertedNB100';
+  if (lvl >= 100 && !window[f100]) {
+    window[f100] = true;
+    log('danger', n + ' FULL — disposal required.');
+    addNotif('🚨', n + ' bin reached 100% — dispose immediately');
+    showToast('🚨', n + ' is FULL!', 'red');
+  } else if (lvl >= 75 && !window[f75]) {
+    window[f75] = true;
+    log('warn', n + ' at 75% — approaching capacity.');
+    addNotif('⚠️', n + ' bin at 75% — nearing capacity');
+    showToast('⚠️', n + ' at 75% capacity.', 'amber');
   }
-  else if (lvl >= 75 && prev < 75) {
-    log('warn', n+' bin at 75%. Prepare disposal. Firing GAS warning...');
-    addNotif('&#x26A0;', n+' bin at 75% — approaching capacity');
-    showToast('&#x26A0;', n+' bin at 75% — warning email sent.', 'amber');
-    await sendGasAlert(n, 75, 'warn');
-  }
-  else if (lvl >= 25 && prev < 25) {
-    log('info', n+' bin reached 25%.');
-  }
+  if (lvl < 75) { window[f75] = false; window[f100] = false; }
 }
-
-async function dispose(t) {
-  var s=S[t];if(s.lvl<100)return;
-  var n=t==='bio'?'Biodegradable':'Non-Bio', name=t==='bio'?'Biodegradable':'Non-Biodegradable';
-  s.disposed=true;s.lidOpen=true;
-  log('action',n+' disposal initiated.');renderBin(t);
-  var now=new Date().toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
-  document.getElementById('sc-disposal').textContent=now;
-  setTimeout(async function(){
-    S[t].lvl=0;S[t].disposed=false;S[t].lidOpen=false;S[t].usActive=false;
-    log('info',n+' bin emptied. Reset to 0%. LEDs GREEN. Buzzer OFF.');
-    showToast('&#x2705;',n+' bin emptied!','em');
+function dispose(t) {
+  var s = S[t]; if (s.lvl < 100) return;
+  var n = (t==='bio') ? 'Biodegradable' : 'Non-Biodegradable';
+  s.lidOpen = true; renderBin(t);
+  var now = new Date().toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
+  var scD = document.getElementById('sc-disposal'); if (scD) scD.textContent = now;
+  log('action', n + ' disposal initiated.');
+  setTimeout(function() {
+    S[t].lvl = 0; S[t].rawMM = 260; S[t].lidOpen = false; S[t].usActive = false;
+    if (t==='bio') { window._alertedBio75=false; window._alertedBio100=false; }
+    else           { window._alertedNB75=false;  window._alertedNB100=false; }
+    log('info', n + ' bin emptied — reset to 0%.');
+    showToast('✅', n + ' bin emptied!', 'em');
+    addNotif('✅', n + ' bin emptied at ' + now);
     renderBin(t);
-    var thrDispose = document.getElementById('thrDispose');
-    if (thrDispose && thrDispose.checked) {
-      await sendGasAlert(name, 0, 'dispose');
-    }
-  },2000);
+  }, 800);
 }
-
-function resetAll(){
-  ['bio','nonbio'].forEach(function(t){
-    S[t].lvl=0;S[t].cnt=0;S[t].lidOpen=false;S[t].usActive=false;S[t].disposed=false;
+function resetAll() {
+  ['bio','nonbio'].forEach(function(t) {
+    S[t].lvl=0; S[t].rawMM=null; S[t].cnt=0; S[t].lidOpen=false; S[t].usActive=false;
     renderBin(t);
   });
-  log('info','System reset. All bins at 0%.');
+  window._alertedBio75=false; window._alertedBio100=false;
+  window._alertedNB75=false;  window._alertedNB100=false;
+  log('info', 'System reset — all bins at 0%.');
 }
 
-function toggleDB(){
-  S.db=!S.db;
-  var dot=document.getElementById('sbarDot');if(dot) dot.className=S.db?'status-dot':'status-dot off';
-  var txt=document.getElementById('sbarTxt');if(txt){txt.textContent=S.db?'ESP32 ONLINE':'DB OFFLINE';txt.className=S.db?'st':'st off';}
-  var sbTxt=document.getElementById('sbStatusTxt');if(sbTxt) sbTxt.textContent=S.db?'Connected · Last sync just now · Latency 38ms':'Disconnected · Logging locally on ESP32';
-  log(S.db?'info':'danger',S.db?'Supabase connection restored.':'Supabase offline. Logging locally.');
-  showToast(S.db?'&#x1F5C4;':'&#x26A0;',S.db?'Supabase connected!':'Supabase disconnected',S.db?'em':'amber');
-}
-
-/* ════════════════════════════════════════════
-   LOGGING
-════════════════════════════════════════════ */
-function ts(){var n=new Date();return n.toLocaleDateString('en-PH',{month:'short',day:'2-digit'})+' · '+n.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
-function log(type,msg){
-  var entry={type:type,msg:msg,ts:ts()};
+// ════════════════════════════════════════════════
+// LOGGING
+// ════════════════════════════════════════════════
+function ts() { var n=new Date(); return n.toLocaleDateString('en-PH',{month:'short',day:'2-digit'})+' '+n.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function log(type, msg) {
+  var entry = { type:type, msg:msg, ts:ts() };
   S.logs.unshift(entry);
-  addLogEntry('logFeed',entry);addLogEntry('logFeedFull',entry);
-  while(S.logs.length>300)S.logs.pop();
+  addLogEntry('logFeed', entry);
+  addLogEntry('logFeedFull', entry);
+  while (S.logs.length > 300) S.logs.pop();
 }
-function addLogEntry(feedId,entry){
-  var feed=document.getElementById(feedId);if(!feed)return;
-  var el=document.createElement('div');el.className='log-entry';
-  el.innerHTML='<div class="log-pip '+entry.type+'"><\/div><div class="log-body"><div class="log-msg">'+entry.msg+'<\/div><div class="log-ts">'+entry.ts+'<\/div><\/div>';
-  feed.prepend(el);while(feed.children.length>80)feed.removeChild(feed.lastChild);
+function addLogEntry(feedId, entry) {
+  var feed = document.getElementById(feedId); if (!feed) return;
+  var el = document.createElement('div'); el.className = 'log-entry';
+  el.innerHTML = '<div class="log-pip ' + entry.type + '"></div><div class="log-body"><div class="log-msg">' + entry.msg + '</div><div class="log-ts">' + entry.ts + '</div></div>';
+  feed.prepend(el);
+  while (feed.children.length > 80) feed.removeChild(feed.lastChild);
 }
-function syncFullLog(){var feed=document.getElementById('logFeedFull');if(!feed)return;feed.innerHTML='';S.logs.forEach(function(e){addLogEntry('logFeedFull',e);});}
-function filterLogs(){
-  var type=document.getElementById('logTypeFilter')?document.getElementById('logTypeFilter').value:'all';
-  var q=(document.getElementById('logSearch')?document.getElementById('logSearch').value:'').toLowerCase();
-  var feed=document.getElementById('logFeedFull');if(!feed)return;
-  feed.innerHTML='';
-  S.logs.filter(function(e){return (type==='all'||e.type===type)&&(!q||e.msg.toLowerCase().indexOf(q)!==-1);}).forEach(function(e){addLogEntry('logFeedFull',e);});
+function syncFullLog() { var f=document.getElementById('logFeedFull');if(!f)return;f.innerHTML='';S.logs.forEach(function(e){addLogEntry('logFeedFull',e);}); }
+function filterLogs() {
+  var type=((document.getElementById('logTypeFilter')||{}).value)||'all';
+  var q   =((document.getElementById('logSearch')||{}).value||'').toLowerCase();
+  var f   =document.getElementById('logFeedFull');if(!f)return;
+  f.innerHTML='';
+  S.logs.filter(function(e){return(type==='all'||e.type===type)&&(!q||e.msg.toLowerCase().indexOf(q)!==-1);}).forEach(function(e){addLogEntry('logFeedFull',e);});
 }
-function clearLogs(){S.logs=[];document.querySelectorAll('.log-feed').forEach(function(f){f.innerHTML='';});showToast('&#x1F5D1;','Logs cleared','em');}
-function exportCSV(){
-  var rows=[['Type','Message','Timestamp']].concat(S.logs.map(function(l){return [l.type,'"'+l.msg.replace(/"/g,'""')+'"',l.ts];}));
+function clearLogs() { S.logs=[]; document.querySelectorAll('.log-feed').forEach(function(f){f.innerHTML='';}); showToast('🗑','Logs cleared','em'); }
+function exportCSV() {
+  var rows=[['Type','Message','Timestamp']].concat(S.logs.map(function(l){return[l.type,'"'+l.msg.replace(/"/g,'""')+'"',l.ts];}));
   var blob=new Blob([rows.map(function(r){return r.join(',');}).join('\n')],{type:'text/csv'});
-  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='smartbin_log_'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click();URL.revokeObjectURL(a.href);log('action','Log exported — '+S.logs.length+' entries.');
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='smartbin_log_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(a.href);
+  log('action','CSV exported — '+S.logs.length+' entries.');
 }
-function globalSearch(q){if(q&&q.length>1){goPage('logs',document.querySelector('.nav-item[data-label="Activity Logs"]'));document.getElementById('logSearch').value=q;filterLogs();}}
+function globalSearch(q) { if(q&&q.length>1){goPage('logs',document.querySelector('.nav-item[data-label="Activity Logs"]'));document.getElementById('logSearch').value=q;filterLogs();} }
 
-/* ════════════════════════════════════════════
-   TOAST
-════════════════════════════════════════════ */
-function showToast(icon,msg,type){
-  type=type||'em';
+// ════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════
+function showToast(icon, msg, type) {
   var colors={em:'var(--em)',amber:'var(--amber)',red:'var(--red)',blue:'var(--blue)'};
   var toast=document.createElement('div');toast.className='toast';
   toast.style.borderLeftColor=colors[type]||colors.em;toast.style.borderLeftWidth='3px';
-  toast.innerHTML='<span class="toast-icon">'+icon+'<\/span><span class="toast-msg">'+msg+'<\/span><button class="toast-close" onclick="this.parentElement.remove()">&#x2715;<\/button>';
+  toast.innerHTML='<span class="toast-icon">'+icon+'</span><span class="toast-msg">'+msg+'</span><button class="toast-close" onclick="this.parentElement.remove()">✕</button>';
   document.getElementById('toastContainer').prepend(toast);
-  setTimeout(function(){toast.classList.add('fadeout');setTimeout(function(){if(toast.parentElement)toast.remove();},350);},3500);
+  setTimeout(function(){toast.classList.add('fadeout');setTimeout(function(){if(toast.parentElement)toast.remove();},250);},3500);
 }
 
-/* ════════════════════════════════════════════
-   CHARTS
-════════════════════════════════════════════ */
+// ════════════════════════════════════════════════
+// CHARTS
+// ════════════════════════════════════════════════
 var chartsInitialized=false;
-function initCharts(){
+function initCharts() {
   if(chartsInitialized)return;chartsInitialized=true;
   var grid='rgba(255,255,255,0.05)',tick='rgba(255,255,255,0.35)';
-  var days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],hrs=['06','08','10','12','14','16','18','20','22'];
+  var days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   var base={responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tick,font:{family:'Outfit',size:11}}}},scales:{x:{ticks:{color:tick},grid:{color:grid}},y:{ticks:{color:tick},grid:{color:grid}}}};
-  new Chart(document.getElementById('chartDaily'),{type:'line',data:{labels:days,datasets:[{label:'Bio (%)',data:[12,28,45,62,80,72,55],borderColor:'#00d68f',backgroundColor:'rgba(0,214,143,0.1)',tension:0.4,fill:true,pointBackgroundColor:'#00d68f'},{label:'Non-Bio (%)',data:[8,20,35,50,70,88,60],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',tension:0.4,fill:true,pointBackgroundColor:'#3b82f6'}]},options:base});
-  new Chart(document.getElementById('chartWeekly'),{type:'bar',data:{labels:days,datasets:[{label:'Bio Disposals',data:[1,2,1,3,2,4,2],backgroundColor:'rgba(0,214,143,0.7)',borderRadius:5},{label:'NonBio Disposals',data:[0,1,2,2,3,2,3],backgroundColor:'rgba(59,130,246,0.7)',borderRadius:5}]},options:base});
-  new Chart(document.getElementById('chartHours'),{type:'bar',data:{labels:hrs,datasets:[{label:'Usage Events',data:[2,5,12,18,14,16,20,11,6],backgroundColor:hrs.map(function(_,i){return i===6?'#00d68f':'rgba(0,214,143,0.35)';}),borderRadius:4}]},options:Object.assign({},base,{plugins:{legend:{display:false}}})});
-  new Chart(document.getElementById('chartSplit'),{type:'doughnut',data:{labels:['Biodegradable','Non-Bio'],datasets:[{data:[55,45],backgroundColor:['#00d68f','#3b82f6'],hoverOffset:8}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tick,font:{family:'Outfit',size:11}}}}}});
-  new Chart(document.getElementById('chartUptime'),{type:'bar',data:{labels:['ESP32','US Bio','US NB','VL Bio','VL NB','Servo','LED'],datasets:[{label:'Uptime %',data:[100,99.8,99.9,100,99.7,98.5,100],backgroundColor:'rgba(0,214,143,0.6)',borderRadius:4}]},options:Object.assign({},base,{plugins:{legend:{display:false}},scales:Object.assign({},base.scales,{y:Object.assign({},base.scales.y,{min:97,max:101})})})});
+  new Chart(document.getElementById('chartDaily'),  {type:'line',data:{labels:days,datasets:[{label:'Bio (%)',data:[12,28,45,62,80,72,55],borderColor:'#00d68f',backgroundColor:'rgba(0,214,143,0.1)',tension:0.4,fill:true},{label:'Non-Bio (%)',data:[8,20,35,50,70,88,60],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',tension:0.4,fill:true}]},options:base});
+  new Chart(document.getElementById('chartWeekly'), {type:'bar', data:{labels:days,datasets:[{label:'Bio Disposals',data:[1,2,1,3,2,4,2],backgroundColor:'rgba(0,214,143,0.7)',borderRadius:5},{label:'NB Disposals',data:[0,1,2,2,3,2,3],backgroundColor:'rgba(59,130,246,0.7)',borderRadius:5}]},options:base});
+  new Chart(document.getElementById('chartHours'),  {type:'bar', data:{labels:['06','08','10','12','14','16','18','20','22'],datasets:[{label:'Usage Events',data:[2,5,12,18,14,16,20,11,6],backgroundColor:['rgba(0,214,143,0.35)','rgba(0,214,143,0.35)','rgba(0,214,143,0.35)','rgba(0,214,143,0.35)','rgba(0,214,143,0.35)','rgba(0,214,143,0.35)','#00d68f','rgba(0,214,143,0.35)','rgba(0,214,143,0.35)'],borderRadius:4}]},options:Object.assign({},base,{plugins:{legend:{display:false}}})});
+  new Chart(document.getElementById('chartSplit'),  {type:'doughnut',data:{labels:['Biodegradable','Non-Bio'],datasets:[{data:[55,45],backgroundColor:['#00d68f','#3b82f6'],hoverOffset:8}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tick}}}}});
+  new Chart(document.getElementById('chartUptime'), {type:'bar', data:{labels:['ESP32','US Bio','US NB','VL Bio','VL NB','Servo','LED'],datasets:[{label:'Uptime %',data:[100,99.8,99.9,100,99.7,98.5,100],backgroundColor:'rgba(0,214,143,0.6)',borderRadius:4}]},options:Object.assign({},base,{plugins:{legend:{display:false}},scales:Object.assign({},base.scales,{y:Object.assign({},base.scales.y,{min:97,max:101})})})});
 }
 
-/* ════════════════════════════════════════════
-   PDF — DAILY REPORT
-════════════════════════════════════════════ */
-function stripNonAscii(s) { return s.replace(/[^\x20-\x7E]/g,'').trim(); }
+// ════════════════════════════════════════════════
+// PDF REPORTS
+// ════════════════════════════════════════════════
+function stripNonAscii(s){return s.replace(/[^\x20-\x7E]/g,'').trim();}
 function generateDailyPDF() {
-  if (typeof window.jspdf === 'undefined') { showToast('&#x26A0;','jsPDF not loaded.','amber'); return; }
-  var jsPDF = window.jspdf.jsPDF;
-  var doc = new jsPDF();
-  var today = new Date();
-  var dateStr = today.toLocaleDateString('en-PH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  var timeStr = today.toLocaleTimeString('en-PH');
-  var bLvl=S.bio.lvl,nbLvl=S.nonbio.lvl,avg=Math.round((bLvl+nbLvl)/2);
-  var W=doc.internal.pageSize.width;
+  if(typeof window.jspdf==='undefined'){showToast('⚠️','jsPDF not loaded.','amber');return;}
+  var jsPDF=window.jspdf.jsPDF,doc=new jsPDF(),today=new Date();
+  var bLvl=S.bio.lvl,nbLvl=S.nonbio.lvl,avg=Math.round((bLvl+nbLvl)/2),W=doc.internal.pageSize.width;
   doc.setFillColor(0,168,107);doc.rect(0,0,W,28,'F');
   doc.setFillColor(0,214,143);doc.rect(0,28,W,4,'F');
   doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text('SmartBin IoT',14,13);
-  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.text('Daily Operations Report',14,21);doc.text(dateStr,W-14,21,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.text('Daily Operations Report',14,21);
+  doc.text(today.toLocaleDateString('en-PH',{weekday:'long',year:'numeric',month:'long',day:'numeric'}),W-14,21,{align:'right'});
   var y=42;doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Current Bin Status',14,y);y+=8;
-  var boxes=[['Biodegradable (Bio)',bLvl+'%',bLvl>=100?[239,68,68]:bLvl>=75?[245,158,11]:[0,168,107]],['Non-Biodegradable',nbLvl+'%',nbLvl>=100?[239,68,68]:nbLvl>=75?[245,158,11]:[59,130,246]],['Average Capacity',avg+'%',avg>=100?[239,68,68]:avg>=75?[245,158,11]:[100,100,200]],['Bio Items Disposed',String(S.bio.cnt),[80,80,80]],['NB Items Disposed',String(S.nonbio.cnt),[80,80,80]],['Active Sensors','7 / 7',[0,168,107]]];
+  var boxes=[['Bio Bin',bLvl+'%',bLvl>=100?[239,68,68]:bLvl>=75?[245,158,11]:[0,168,107]],['Non-Bio',nbLvl+'%',nbLvl>=100?[239,68,68]:nbLvl>=75?[245,158,11]:[59,130,246]],['Average',avg+'%',avg>=75?[239,68,68]:[100,100,200]],['Bio Items',String(S.bio.cnt),[80,80,80]],['NB Items',String(S.nonbio.cnt),[80,80,80]],['Sensors','7 / 7',[0,168,107]]];
   var bw=59,bh=18;
-  boxes.forEach(function(box,i){var label=box[0],value=box[1],c=box[2];var bx=14+(i%3)*(bw+4),by=y+Math.floor(i/3)*(bh+4);doc.setFillColor(c[0],c[1],c[2]);doc.setGState(new doc.GState({opacity:0.1}));doc.roundedRect(bx,by,bw,bh,2,2,'F');doc.setGState(new doc.GState({opacity:1.0}));doc.setDrawColor(c[0],c[1],c[2]);doc.setLineWidth(0.4);doc.roundedRect(bx,by,bw,bh,2,2,'D');doc.setFontSize(7.5);doc.setTextColor(90,90,90);doc.setFont('helvetica','normal');doc.text(label,bx+3,by+6.5);doc.setFontSize(12);doc.setTextColor(c[0],c[1],c[2]);doc.setFont('helvetica','bold');doc.text(value,bx+3,by+14);});
+  boxes.forEach(function(box,i){var c=box[2],bx=14+(i%3)*(bw+4),by=y+Math.floor(i/3)*(bh+4);doc.setFillColor(c[0],c[1],c[2]);doc.setGState(new doc.GState({opacity:0.1}));doc.roundedRect(bx,by,bw,bh,2,2,'F');doc.setGState(new doc.GState({opacity:1}));doc.setDrawColor(c[0],c[1],c[2]);doc.setLineWidth(0.4);doc.roundedRect(bx,by,bw,bh,2,2,'D');doc.setFontSize(7.5);doc.setTextColor(90,90,90);doc.setFont('helvetica','normal');doc.text(box[0],bx+3,by+6.5);doc.setFontSize(12);doc.setTextColor(c[0],c[1],c[2]);doc.setFont('helvetica','bold');doc.text(box[1],bx+3,by+14);});
   y+=44;
-  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);doc.text('Fill Level Visualization',14,y);y+=6;
-  [['Biodegradable',bLvl,[0,168,107]],['Non-Biodegradable',nbLvl,[59,130,246]]].forEach(function(item){var lbl=item[0],lvl=item[1],c=item[2];doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);doc.text(lbl+': '+lvl+'%',14,y);y+=4;doc.setFillColor(220,220,220);doc.roundedRect(14,y,140,5,1,1,'F');if(lvl>0){var col=lvl>=100?[239,68,68]:lvl>=75?[245,158,11]:c;doc.setFillColor(col[0],col[1],col[2]);doc.roundedRect(14,y,140*(lvl/100),5,1,1,'F');}doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(c[0],c[1],c[2]);doc.text(lvl+'%',158,y+4.5);y+=9;});
-  y+=4;
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);doc.text("Today's Activity Log",14,y);y+=4;
   var todayKey=today.toLocaleDateString('en-PH',{month:'short',day:'2-digit'});
   var todayLogs=S.logs.filter(function(l){return l.ts.indexOf(todayKey)!==-1;}).slice(0,40);
   if(todayLogs.length===0){doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(140,140,140);doc.text('No activity recorded today.',14,y+6);}
-  else{doc.autoTable({startY:y,head:[['#','Type','Event','Time']],body:todayLogs.map(function(l,i){return [String(i+1),l.type.toUpperCase(),stripNonAscii(l.msg).substring(0,65),l.ts.split('·')[1]?l.ts.split('·')[1].trim():'—'];}),headStyles:{fillColor:[0,168,107],textColor:[255,255,255],fontStyle:'bold',fontSize:8.5},bodyStyles:{fontSize:7.5,cellPadding:2.5},alternateRowStyles:{fillColor:[245,252,249]},columnStyles:{0:{cellWidth:8},1:{cellWidth:18},2:{cellWidth:130},3:{cellWidth:28}},margin:{left:14,right:14}});}
-  var ph=doc.internal.pageSize.height;doc.setFillColor(13,17,32);doc.rect(0,ph-10,W,10,'F');doc.setFontSize(7);doc.setTextColor(160,160,160);doc.text('SmartBin IoT v1.0  |  NBSC IT38B Group 5  |  Generated: '+timeStr,W/2,ph-3.5,{align:'center'});
-  doc.save('SmartBin_Daily_Report_'+today.toISOString().slice(0,10)+'.pdf');
-  log('action','Daily PDF report generated.');showToast('&#x1F4C4;','Daily report downloaded!','em');
+  else{doc.autoTable({startY:y,head:[['#','Type','Event','Time']],body:todayLogs.map(function(l,i){return[String(i+1),l.type.toUpperCase(),stripNonAscii(l.msg).substring(0,65),l.ts.split(' ')[1]||'--'];}),headStyles:{fillColor:[0,168,107],textColor:[255,255,255],fontStyle:'bold',fontSize:8.5},bodyStyles:{fontSize:7.5,cellPadding:2.5},alternateRowStyles:{fillColor:[245,252,249]},columnStyles:{0:{cellWidth:8},1:{cellWidth:18},2:{cellWidth:130},3:{cellWidth:28}},margin:{left:14,right:14}});}
+  var ph=doc.internal.pageSize.height;doc.setFillColor(13,17,32);doc.rect(0,ph-10,W,10,'F');
+  doc.setFontSize(7);doc.setTextColor(160,160,160);doc.text('SmartBin IoT v2.1 | NBSC IT38B Group 5 | Generated: '+today.toLocaleTimeString('en-PH'),W/2,ph-3.5,{align:'center'});
+  doc.save('SmartBin_Daily_'+today.toISOString().slice(0,10)+'.pdf');
+  log('action','Daily PDF generated.');showToast('📄','Daily report downloaded!','em');
 }
+function generateWeeklyPDF(){showToast('📊','Generating weekly report...','blue');setTimeout(generateDailyPDF,100);}
 
-function generateWeeklyPDF() {
-  if (typeof window.jspdf === 'undefined') { showToast('&#x26A0;','jsPDF not loaded.','amber'); return; }
-  var jsPDF = window.jspdf.jsPDF;
-  var doc=new jsPDF(),today=new Date(),W=doc.internal.pageSize.width;
-  var weekStart=new Date(today);weekStart.setDate(today.getDate()-6);
-  var weekRange=weekStart.toLocaleDateString('en-PH',{month:'short',day:'2-digit'})+' - '+today.toLocaleDateString('en-PH',{month:'short',day:'2-digit',year:'numeric'});
-  var days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],bioData=[12,28,45,62,80,72,55],nbData=[8,20,35,50,70,88,60],bioDisp=[1,2,1,3,2,4,2],nbDisp=[0,1,2,2,3,2,3],peakHrs=[2,5,12,18,14,16,20,11,6],hrLabels=['06h','08h','10h','12h','14h','16h','18h','20h','22h'];
-  doc.setFillColor(59,130,246);doc.rect(0,0,W,28,'F');doc.setFillColor(99,160,250);doc.rect(0,28,W,3,'F');
-  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text('SmartBin IoT',14,13);doc.setFont('helvetica','normal');doc.setFontSize(10);doc.text('Weekly Analytics Report',14,21);doc.text(weekRange,W-14,21,{align:'right'});
-  var y=40;doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);doc.text('Weekly Summary',14,y);y+=8;
-  var totalDisp=bioDisp.reduce(function(a,b){return a+b;},0)+nbDisp.reduce(function(a,b){return a+b;},0),avgBio=Math.round(bioData.reduce(function(a,b){return a+b;},0)/7),avgNB=Math.round(nbData.reduce(function(a,b){return a+b;},0)/7),peakHour=hrLabels[peakHrs.indexOf(Math.max.apply(null,peakHrs))];
-  var sumBoxes=[['Total Disposals',String(totalDisp),[0,168,107]],['Avg Bio Level',avgBio+'%',[0,168,107]],['Avg Non-Bio Level',avgNB+'%',[59,130,246]],['Peak Hour',peakHour,[245,158,11]],['Bio Disposals',String(bioDisp.reduce(function(a,b){return a+b;},0)),[0,168,107]],['NB Disposals',String(nbDisp.reduce(function(a,b){return a+b;},0)),[59,130,246]]];
-  var bw=59,bh=18;
-  sumBoxes.forEach(function(box,i){var label=box[0],value=box[1],c=box[2];var bx=14+(i%3)*(bw+4),by=y+Math.floor(i/3)*(bh+4);doc.setFillColor(c[0],c[1],c[2]);doc.setGState(new doc.GState({opacity:0.1}));doc.roundedRect(bx,by,bw,bh,2,2,'F');doc.setGState(new doc.GState({opacity:1.0}));doc.setDrawColor(c[0],c[1],c[2]);doc.setLineWidth(0.4);doc.roundedRect(bx,by,bw,bh,2,2,'D');doc.setFontSize(7.5);doc.setTextColor(90,90,90);doc.setFont('helvetica','normal');doc.text(label,bx+3,by+6.5);doc.setFontSize(12);doc.setTextColor(c[0],c[1],c[2]);doc.setFont('helvetica','bold');doc.text(value,bx+3,by+14);});
-  y+=44;
-  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);doc.text('Daily Fill Level Data (%)',14,y);y+=4;
-  doc.autoTable({startY:y,head:[['Day','Bio Level','Bio Status','Non-Bio Level','NB Status','Bio Disposed','NB Disposed']],body:days.map(function(d,i){return [d,bioData[i]+'%',bioData[i]>=100?'FULL':bioData[i]>=75?'HIGH':'OK',nbData[i]+'%',nbData[i]>=100?'FULL':nbData[i]>=75?'HIGH':'OK',String(bioDisp[i]),String(nbDisp[i])];}),headStyles:{fillColor:[59,130,246],textColor:[255,255,255],fontStyle:'bold',fontSize:8.5},bodyStyles:{fontSize:8,cellPadding:3},alternateRowStyles:{fillColor:[245,248,255]},margin:{left:14,right:14}});
-  y=doc.lastAutoTable.finalY+10;
-  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);doc.text('Peak Usage Hours',14,y);y+=4;
-  doc.autoTable({startY:y,head:[['Time Slot','Usage Events','Activity Level']],body:hrLabels.map(function(h,i){return [h,String(peakHrs[i]),peakHrs[i]>=18?'PEAK':peakHrs[i]>=10?'HIGH':peakHrs[i]>=5?'MODERATE':'LOW'];}),headStyles:{fillColor:[245,158,11],textColor:[255,255,255],fontStyle:'bold',fontSize:8.5},bodyStyles:{fontSize:8,cellPadding:3},alternateRowStyles:{fillColor:[255,252,245]},margin:{left:14,right:14}});
-  var ph=doc.internal.pageSize.height;doc.setFillColor(13,17,32);doc.rect(0,ph-10,W,10,'F');doc.setFontSize(7);doc.setTextColor(160,160,160);doc.text('SmartBin IoT v1.0  |  NBSC IT38B Group 5  |  Generated: '+today.toLocaleString('en-PH'),W/2,ph-3.5,{align:'center'});
-  doc.save('SmartBin_Weekly_Report_'+today.toISOString().slice(0,10)+'.pdf');
-  log('action','Weekly PDF report generated.');showToast('&#x1F4CA;','Weekly report downloaded!','blue');
-}
-
-/* ════════════════════════════════════════════
-   INIT
-════════════════════════════════════════════ */
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
 window.addEventListener('load', function() {
-  var savedUrl    = localStorage.getItem('sb_gas_url') || '';
-  var savedEmails = localStorage.getItem('sb_alert_emails') || '';
-  GAS.url        = savedUrl;
-  GAS.recipients = savedEmails;
-  var uEl = document.getElementById('gasUrlInput'); if(uEl) uEl.value = savedUrl;
-  var eEl = document.getElementById('alertEmails'); if(eEl) eEl.value = savedEmails;
-  updateGasIndicator();
+  setSbStatus('connecting');
+  initSupabase(SUPABASE_URL, SUPABASE_KEY);
 });
 
 updateClock();
-log('info', 'SmartBin IoT Dashboard started — direct access mode (no login required).');
-log('info', 'Hardware ready: HC-SR04 x2, VL53L0X x2, MG90S x2, LED x4, Buzzer, SSD1306 OLED.');
-log('info', 'GAS email relay: configure URL in GAS Alerts page to enable auto-notifications.');
+log('info', 'SmartBin IoT Dashboard v2.1 loaded.');
+log('info', 'Supabase polling every 3s + Realtime on bin_logs & bin_commands.');
+log('info', 'Remote Control: commands go to bin_commands — ESP32 polls & executes every 3s.');
 renderBin('bio');
 renderBin('nonbio');
 renderNotifDropdown();
 
 setInterval(function(){
-  if(Math.random()>0.7&&S.bio.lvl<90)     approach('bio');
-  if(Math.random()>0.75&&S.nonbio.lvl<90) approach('nonbio');
-},45000);
-setInterval(function(){
   var f=document.getElementById('ftSync');
-  if(f) f.textContent='Last sync: '+new Date().toLocaleTimeString('en-PH');
-},10000);
+  if(f&&_sbConnected)f.textContent='Last sync: '+new Date().toLocaleTimeString('en-PH');
+},5000);
 </script>
 </body>
 </html>

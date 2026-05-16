@@ -1,19 +1,11 @@
-// ================================================================
-// SmartBin IoT — ESP32 Firmware v2.0
-// Group 5 · IT38B · NBSC
-// ================================================================
-// Original hardware logic preserved exactly.
-// Added: WiFi, Supabase (bin_logs + device_status), GAS email.
 //
 // Libraries (install via Arduino Library Manager):
 //   - VL53L0X           by Pololu
 //   - Adafruit GFX Library
 //   - Adafruit SH110X
 //   - ESP32Servo
-//   - ArduinoJson       by Benoit Blanchon  (v6 or v7)
-//   - WiFi              (built-in ESP32 core)
-//   - HTTPClient        (built-in ESP32 core)
-//   - WiFiClientSecure  (built-in ESP32 core)
+//   - ArduinoJson       by Benoit Blanchon (v6 or v7)
+//   - WiFi, HTTPClient, WiFiClientSecure (built-in ESP32 core)
 // ================================================================
 
 #include <Wire.h>
@@ -27,30 +19,21 @@
 #include <ArduinoJson.h>
 
 // ================================================================
-// ██████  CONFIG — EDIT THESE BEFORE UPLOADING
+// ██  CONFIG — EDIT THESE BEFORE UPLOADING  ██
 // ================================================================
 
-const char* WIFI_SSID    = "2.4G";
-const char* WIFI_PASS    = "ROJOFAMS";
+const char* WIFI_SSID = "2.4G";
+const char* WIFI_PASS = "ROJOFAMS";
 
-// Supabase — project URL and anon/public key
-// Get both from: Supabase Dashboard → Project → Settings → API
-const char* SUPABASE_URL = "https://xohdouvqyupwuivlefox.supabase.co";
-const char* SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvaGRvdXZxeXVwd3VpdmxlZm94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjI5MTUsImV4cCI6MjA4OTc5ODkxNX0.ot6ZusBC2aKwIKfcF4RTG6tQiZNLS_bOBEaT6ItG3DM";
+const char* SUPABASE_URL = "https://wjkvrwwpzngwfrxhcrlt.supabase.co";
+const char* SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqa3Zyd3dwem5nd2ZyeGhjcmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MDczNzIsImV4cCI6MjA4OTQ4MzM3Mn0.R-DlrG4gnyYS3hZr7_a_XlFzZg0hl64fsMaFG-QVZOU";
+const char* DEVICE_ID   = "smartbin-01";
 
-// Google Apps Script Web App URL
-// Deploy your script → Execute as Me → Anyone → copy URL here
-const char* GAS_URL      = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+const unsigned long PUSH_INTERVAL     = 3000UL;
+const unsigned long CMD_POLL_INTERVAL = 3000UL;
 
-// Alert email recipients (comma-separated, no spaces after comma)
-const char* ALERT_EMAILS = "admin@nbsc.edu.ph,janitor@nbsc.edu.ph";
-
-// Device ID — must match what you inserted in device_status seed data
-const char* DEVICE_ID    = "smartbin-01";
-
-// How often to push a routine reading to Supabase (ms)
-// 30 000 ms = 30 seconds
-const unsigned long SUPABASE_INTERVAL = 30000UL;
+const int BIN_EMPTY_MM = 250;
+const int BIN_FULL_MM  = 50;
 
 // ================================================================
 // END CONFIG
@@ -66,8 +49,8 @@ Adafruit_SH1106G display = Adafruit_SH1106G(128, 64, &Wire, -1);
 // ================================================================
 // VL53L0X SENSORS
 // ================================================================
-VL53L0X sensor1; // BIO bin
-VL53L0X sensor2; // NON-BIO bin
+VL53L0X sensor1;  // BIO bin
+VL53L0X sensor2;  // NON-BIO bin
 
 #define XSHUT1  4
 #define XSHUT2  5
@@ -91,8 +74,8 @@ Servo servo2;
 #define SERVO1_PIN  18
 #define SERVO2_PIN  19
 
-const int SERVO_CLOSED = 40;   // degrees
-const int SERVO_OPEN   = 110;  // degrees
+const int SERVO_CLOSED = 40;
+const int SERVO_OPEN   = 110;
 
 
 // ================================================================
@@ -106,59 +89,49 @@ const int SERVO_OPEN   = 110;  // degrees
 
 
 // ================================================================
-// BIN STATUS FUNCTION
-// Mirrors the database function fn_mm_to_level() and fn_getStatus().
-// Returns a human-readable string AND a fill-% integer.
+// SHARED STATE
+// Marked volatile so both cores always read the latest value.
 // ================================================================
+volatile int  currentBioLevel = 0;
+volatile int  currentNbLevel  = 0;
+volatile int  currentBioMM    = 0;
+volatile int  currentNbMM     = 0;
+volatile bool bioServoOpen    = false;
+volatile bool nonBioServoOpen = false;
 
-// Returns fill % integer: 0 / 25 / 50 / 75 / 100
-// Returns -1 on sensor error (maps to "SENSOR ERR" — not inserted to DB)
-int mmToLevel(int d) {
-  if (d > 8000 || d < 0) return -1;  // sensor error
-  if (d > 250)            return 0;
-  if (d <= 90)            return 100;
-  if (d <= 130)           return 75;
-  if (d <= 170)           return 50;
-  if (d <= 210)           return 25;
-  return 0;
-}
+volatile bool bioWarnLogged  = false;
+volatile bool bioFullLogged  = false;
+volatile bool nbWarnLogged   = false;
+volatile bool nbFullLogged   = false;
 
-// Returns the human-readable status string stored in bio_status / nb_status columns
-String levelToStatus(int level) {
-  if (level < 0)  return "SENSOR ERR";
-  if (level == 0) return "0% FULL";
-  return String(level) + "% FULL";  // "25% FULL", "50% FULL", "75% FULL", "100% FULL"
-}
-
-
-// ================================================================
-// STATE VARIABLES (all original flags preserved)
-// ================================================================
-bool bioServoOpen    = false;
-bool nonBioServoOpen = false;
-
-unsigned long bioTimer    = 0;
-unsigned long nonBioTimer = 0;
+float bioDist = 99.0;
+float nbDist  = 99.0;
 
 bool bioBuzzLock    = false;
 bool nonBioBuzzLock = false;
 
-// Supabase push timer
-unsigned long lastSupabasePush = 0;
+unsigned long bioTimer    = 0;
+unsigned long nonBioTimer = 0;
 
-// Alert-sent flags — reset when bin drops below threshold
-bool bioWarnSent    = false;
-bool bioFullSent    = false;
-bool nonBioWarnSent = false;
-bool nonBioFullSent = false;
-
-// System uptime counter (seconds)
-unsigned long uptimeSeconds = 0;
-unsigned long lastUptimeTick = 0;
+// Pending command handoff: WiFi task → main loop
+volatile bool pendingCmd       = false;
+volatile char pendingCmdStr[32] = "";
+volatile long pendingCmdId     = -1;
 
 
 // ================================================================
-// BUZZER HELPERS (original functions, unchanged)
+// FILL LEVEL
+// ================================================================
+int mmToPercent(int d) {
+  if (d > 8000 || d < 0) return -1;
+  if (d >= BIN_EMPTY_MM) return 0;
+  if (d <= BIN_FULL_MM)  return 100;
+  return (int)map(d, BIN_FULL_MM, BIN_EMPTY_MM, 100, 0);
+}
+
+
+// ================================================================
+// BUZZER HELPERS
 // ================================================================
 void shortBeep() {
   digitalWrite(BUZZER, HIGH);
@@ -166,15 +139,15 @@ void shortBeep() {
   digitalWrite(BUZZER, LOW);
 }
 
-void fullBeep() {
+void longBeep() {
   digitalWrite(BUZZER, HIGH);
-  delay(2000);
+  delay(1500);
   digitalWrite(BUZZER, LOW);
 }
 
 
 // ================================================================
-// ULTRASONIC HELPER (original, unchanged)
+// ULTRASONIC HELPER
 // ================================================================
 float getDistanceInches(int trigPin, int echoPin) {
   digitalWrite(trigPin, LOW);
@@ -182,102 +155,58 @@ float getDistanceInches(int trigPin, int echoPin) {
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
-  long duration = pulseIn(echoPin, HIGH, 25000); // 25 ms timeout
+  long duration = pulseIn(echoPin, HIGH, 25000);
   if (duration == 0) return 99.0;
-  return (duration * 0.0343 / 2) / 2.54;
+  return (duration * 0.0343 / 2.0) / 2.54;
 }
 
 
 // ================================================================
-// WiFi
+// WiFi connect
 // ================================================================
 void connectWiFi() {
-  Serial.print("[WiFi] Connecting to ");
-  Serial.print(WIFI_SSID);
+  Serial.print("[WiFi] Connecting to "); Serial.print(WIFI_SSID);
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-
-  int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-    delay(500);
-    Serial.print(".");
-    attempts++;
+  int tries = 0;
+  while (WiFi.status() != WL_CONNECTED && tries < 20) {
+    delay(500); Serial.print("."); tries++;
   }
-
-  if (WiFi.status() == WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED)
     Serial.println("\n[WiFi] Connected! IP: " + WiFi.localIP().toString());
-  } else {
+  else
     Serial.println("\n[WiFi] FAILED — running offline.");
-  }
 }
 
 
 // ================================================================
-// SUPABASE — POST to bin_logs
-//
-// Columns written (matches supabase_schema.sql):
-//   bio_level, nb_level
-//   bio_distance_mm, nb_distance_mm
-//   bio_status, nb_status
-//   bio_servo_open, nb_servo_open
-//   event_type  ('reading' | 'alert' | 'disposal' | 'startup')
-//   alert_bin   ('bio' | 'nonbio' | NULL)
-//   notes
-//   device_id
-//
-// The three triggers in the DB handle the rest automatically:
-//   trg_update_device_status → keeps device_status fresh
-//   trg_log_disposal         → writes to disposal_events
-//   trg_log_alert            → writes to alert_history (status: pending)
+// SUPABASE — Push bin_logs
 // ================================================================
-bool postBinLog(
-  int bioLevel,   int nbLevel,
-  int bioMM,      int nbMM,
-  String bioStat, String nbStat,
-  bool bioOpen,   bool nbOpen,
-  String eventType,
-  String alertBin,   // pass empty string "" to store NULL
-  String notes
-) {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[Supabase] No WiFi — skipping push.");
-    return false;
-  }
+bool pushBinLog(int bioLvl, int nbLvl,
+                int bioMM,  int nbMM,
+                bool bioOpen, bool nbOpen) {
+
+  if (WiFi.status() != WL_CONNECTED) return false;
 
   WiFiClientSecure client;
-  client.setInsecure();  // skip SSL cert check (standard for ESP32)
-
+  client.setInsecure();
   HTTPClient http;
+
   String url = String(SUPABASE_URL) + "/rest/v1/bin_logs";
   http.begin(client, url);
   http.addHeader("Content-Type",  "application/json");
-  http.addHeader("apikey",         SUPABASE_KEY);
+  http.addHeader("apikey",        SUPABASE_KEY);
   http.addHeader("Authorization", String("Bearer ") + SUPABASE_KEY);
-  http.addHeader("Prefer",        "return=minimal");  // don't return the row, saves bandwidth
+  http.addHeader("Prefer",        "return=minimal");
 
-  // Build JSON payload
-  StaticJsonDocument<512> doc;
-  doc["bio_level"]       = bioLevel;
-  doc["nb_level"]        = nbLevel;
+  StaticJsonDocument<256> doc;
+  doc["device_id"]       = DEVICE_ID;
+  doc["bio_level"]       = (bioLvl < 0) ? 0 : bioLvl;
+  doc["nb_level"]        = (nbLvl  < 0) ? 0 : nbLvl;
   doc["bio_distance_mm"] = bioMM;
   doc["nb_distance_mm"]  = nbMM;
-  doc["bio_status"]      = bioStat;
-  doc["nb_status"]       = nbStat;
   doc["bio_servo_open"]  = bioOpen;
   doc["nb_servo_open"]   = nbOpen;
-  doc["event_type"]      = eventType;
-  doc["device_id"]       = DEVICE_ID;
-
-  // alert_bin is nullable — only include when it has a value
-  if (alertBin.length() > 0) {
-    doc["alert_bin"] = alertBin;
-  } else {
-    doc["alert_bin"] = (char*)NULL;  // explicit NULL for the column
-  }
-
-  if (notes.length() > 0) {
-    doc["notes"] = notes;
-  }
 
   String body;
   serializeJson(doc, body);
@@ -285,57 +214,53 @@ bool postBinLog(
   int code = http.POST(body);
   http.end();
 
-  if (code == 201 || code == 200) {
-    Serial.println("[Supabase] bin_logs INSERT OK (HTTP " + String(code) + ")");
-    return true;
-  } else {
-    Serial.println("[Supabase] INSERT FAILED (HTTP " + String(code) + ")");
-    return false;
-  }
+  bool ok = (code == 200 || code == 201);
+  Serial.println("[Supabase] push " + String(ok ? "OK" : "FAIL") +
+                 " (HTTP " + String(code) + ")  bio=" +
+                 String((bioLvl < 0) ? 0 : bioLvl) + "% nb=" +
+                 String((nbLvl  < 0) ? 0 : nbLvl)  + "%");
+  return ok;
 }
 
 
 // ================================================================
-// SUPABASE — UPDATE alert_history email_status
-// Called after GAS responds so the DB shows 'sent' or 'failed'
-// instead of leaving it as 'pending' forever.
+// MARK COMMAND EXECUTED
 // ================================================================
-void updateAlertEmailStatus(String binType, String alertType, String status) {
+void markCommandExecuted(long cmdId) {
   if (WiFi.status() != WL_CONNECTED) return;
 
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
 
-  // PATCH the most recent matching alert_history row
   String url = String(SUPABASE_URL)
-    + "/rest/v1/alert_history"
-    + "?bin_type=eq." + binType
-    + "&alert_type=eq." + alertType
-    + "&email_status=eq.pending"
-    + "&order=created_at.desc&limit=1";
+    + "/rest/v1/bin_commands"
+    + "?id=eq." + String(cmdId)
+    + "&device_id=eq." + String(DEVICE_ID);
 
   http.begin(client, url);
   http.addHeader("Content-Type",  "application/json");
-  http.addHeader("apikey",         SUPABASE_KEY);
+  http.addHeader("apikey",        SUPABASE_KEY);
   http.addHeader("Authorization", String("Bearer ") + SUPABASE_KEY);
   http.addHeader("Prefer",        "return=minimal");
 
   StaticJsonDocument<64> doc;
-  doc["email_status"] = status;   // "sent" or "failed"
+  doc["status"] = "executed";
   String body;
   serializeJson(doc, body);
 
-  http.PATCH(body);
+  int code = http.PATCH(body);
   http.end();
+
+  Serial.println("[CMD] Marked executed (id=" + String(cmdId) +
+                 ") HTTP " + String(code));
 }
 
 
 // ================================================================
-// SUPABASE — UPDATE device_status uptime
-// Called every 30 s alongside the routine reading push.
+// POLL bin_commands
 // ================================================================
-void updateDeviceUptime() {
+void pollCommands() {
   if (WiFi.status() != WL_CONNECTED) return;
 
   WiFiClientSecure client;
@@ -343,131 +268,176 @@ void updateDeviceUptime() {
   HTTPClient http;
 
   String url = String(SUPABASE_URL)
-    + "/rest/v1/device_status"
-    + "?device_id=eq." + String(DEVICE_ID);
+    + "/rest/v1/bin_commands"
+    + "?device_id=eq." + String(DEVICE_ID)
+    + "&status=eq.pending"
+    + "&order=created_at.asc"
+    + "&limit=5"
+    + "&select=id,command";
 
   http.begin(client, url);
-  http.addHeader("Content-Type",  "application/json");
-  http.addHeader("apikey",         SUPABASE_KEY);
+  http.addHeader("apikey",        SUPABASE_KEY);
   http.addHeader("Authorization", String("Bearer ") + SUPABASE_KEY);
-  http.addHeader("Prefer",        "return=minimal");
 
-  StaticJsonDocument<128> doc;
-  doc["uptime_seconds"] = uptimeSeconds;
-  doc["ip_address"]     = WiFi.localIP().toString();
-  doc["wifi_rssi"]      = WiFi.RSSI();
+  int code = http.GET();
+  if (code != 200) { http.end(); return; }
 
-  String body;
-  serializeJson(doc, body);
-
-  http.PATCH(body);
+  String payload = http.getString();
   http.end();
+
+  DynamicJsonDocument resp(1024);
+  if (deserializeJson(resp, payload) || !resp.is<JsonArray>()) return;
+
+  JsonArray arr = resp.as<JsonArray>();
+  if (arr.size() == 0) return;
+
+  Serial.println("[CMD] " + String(arr.size()) + " command(s) found.");
+
+  for (JsonObject item : arr) {
+    long   id  = item["id"].as<long>();
+    String cmd = item["command"].as<String>();
+
+    // Hand command off to main loop — all hardware lives on Core 1
+    strncpy((char*)pendingCmdStr, cmd.c_str(), sizeof(pendingCmdStr) - 1);
+    pendingCmdId = id;
+    pendingCmd   = true;
+
+    // Wait up to 200 ms for main loop to pick it up
+    unsigned long t = millis();
+    while (pendingCmd && millis() - t < 200) delay(10);
+
+    markCommandExecuted(id);
+    pushBinLog(currentBioLevel, currentNbLevel,
+               currentBioMM,   currentNbMM,
+               bioServoOpen,   nonBioServoOpen);
+  }
 }
 
 
 // ================================================================
-// GAS EMAIL ALERT
-// Sends alert and then updates alert_history.email_status in DB.
+// EXECUTE COMMAND — called from main loop (Core 1) only
 // ================================================================
-bool sendGASAlert(const char* binType, int level, const char* alertType) {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[GAS] No WiFi — alert skipped.");
-    return false;
+void executeCommand(const char* cmd) {
+  Serial.println("[CMD] Executing: " + String(cmd));
+
+  if      (strcmp(cmd, "open_bio_lid")   == 0) { servo1.write(SERVO_OPEN);   bioServoOpen = true;  bioTimer = millis(); }
+  else if (strcmp(cmd, "close_bio_lid")  == 0) { servo1.write(SERVO_CLOSED); bioServoOpen = false; }
+  else if (strcmp(cmd, "open_nb_lid")    == 0) { servo2.write(SERVO_OPEN);   nonBioServoOpen = true;  nonBioTimer = millis(); }
+  else if (strcmp(cmd, "close_nb_lid")   == 0) { servo2.write(SERVO_CLOSED); nonBioServoOpen = false; }
+  else if (strcmp(cmd, "open_all_lids")  == 0) {
+    servo1.write(SERVO_OPEN); servo2.write(SERVO_OPEN);
+    bioServoOpen = nonBioServoOpen = true;
+    bioTimer = nonBioTimer = millis();
   }
-
-  // Build subject line
-  String subject;
-  if (strcmp(alertType, "full") == 0) {
-    subject = "SmartBin FULL: " + String(binType) + " bin — Disposal Required";
-  } else if (strcmp(alertType, "warn") == 0) {
-    subject = "SmartBin Warning: " + String(binType) + " bin at " + String(level) + "%";
-  } else {
-    subject = "SmartBin: " + String(binType) + " bin emptied";
+  else if (strcmp(cmd, "close_all_lids") == 0) {
+    servo1.write(SERVO_CLOSED); servo2.write(SERVO_CLOSED);
+    bioServoOpen = nonBioServoOpen = false;
   }
-
-  // Plain-text body
-  String bodyTxt = "SmartBin IoT Alert\n\n"
-    "Bin: " + String(binType) + "\n"
-    "Level: " + String(level) + "%\n"
-    "Status: " + String(alertType) + "\n"
-    "Device: " + String(DEVICE_ID) + "\n\n"
-    "This is an automated message from SmartBin IoT.";
-
-  // JSON payload for GAS relay
-  StaticJsonDocument<512> doc;
-  doc["recipients"] = ALERT_EMAILS;
-  doc["subject"]    = subject;
-  doc["body"]       = bodyTxt;
-  doc["binType"]    = binType;
-  doc["alertType"]  = alertType;
-  doc["level"]      = level;
-
-  String payload;
-  serializeJson(doc, payload);
-
-  WiFiClientSecure client;
-  client.setInsecure();
-  HTTPClient http;
-  http.begin(client, GAS_URL);
-  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-  http.addHeader("Content-Type", "application/json");
-
-  int code = http.POST(payload);
-  String resp = http.getString();
-  http.end();
-
-  Serial.println("[GAS] HTTP " + String(code) + " → " + resp);
-
-  // Determine success and update alert_history in DB
-  bool success = (code == 200 && resp.indexOf("\"ok\":true") >= 0);
-
-  // binType from GAS payload is the human name ("Biodegradable") — map to DB column value
-  // alert_history.bin_type CHECK: 'bio' | 'nonbio' | 'test'
-  String dbBinType = (String(binType).indexOf("Bio") >= 0 &&
-                      String(binType).indexOf("Non") < 0) ? "bio" : "nonbio";
-
-  updateAlertEmailStatus(dbBinType, String(alertType), success ? "sent" : "failed");
-
-  return success;
+  else if (strcmp(cmd, "buzzer_on")  == 0) { shortBeep(); }
+  else if (strcmp(cmd, "buzzer_off") == 0) { digitalWrite(BUZZER, LOW); }
+  else if (strcmp(cmd, "reset_bio")  == 0) { currentBioLevel = 0; bioWarnLogged = bioFullLogged = false; }
+  else if (strcmp(cmd, "reset_nb")   == 0) { currentNbLevel  = 0; nbWarnLogged  = nbFullLogged  = false; }
+  else if (strcmp(cmd, "reset_all")  == 0) {
+    currentBioLevel = currentNbLevel = 0;
+    bioWarnLogged = bioFullLogged = nbWarnLogged = nbFullLogged = false;
+  }
+  else if (strcmp(cmd, "trigger_bio_us") == 0) {
+    if (currentBioLevel < 100) { servo1.write(SERVO_OPEN); bioServoOpen = true; bioTimer = millis(); shortBeep(); }
+  }
+  else if (strcmp(cmd, "trigger_nb_us") == 0) {
+    if (currentNbLevel < 100) { servo2.write(SERVO_OPEN); nonBioServoOpen = true; nonBioTimer = millis(); shortBeep(); }
+  }
+  else if (strcmp(cmd, "led_bio_green")  == 0) { digitalWrite(LED_BIO_GREEN,    HIGH); digitalWrite(LED_BIO_RED,      LOW); }
+  else if (strcmp(cmd, "led_bio_red")    == 0) { digitalWrite(LED_BIO_RED,       HIGH); digitalWrite(LED_BIO_GREEN,    LOW); }
+  else if (strcmp(cmd, "led_nb_green")   == 0) { digitalWrite(LED_NONBIO_GREEN,  HIGH); digitalWrite(LED_NONBIO_RED,   LOW); }
+  else if (strcmp(cmd, "led_nb_red")     == 0) { digitalWrite(LED_NONBIO_RED,    HIGH); digitalWrite(LED_NONBIO_GREEN, LOW); }
+  else if (strcmp(cmd, "request_status") == 0) { Serial.println("[CMD] Status push queued."); }
+  else { Serial.println("[CMD] Unknown: " + String(cmd)); }
 }
 
 
 // ================================================================
-// OLED HELPER
+// OLED UPDATE
 // ================================================================
-void updateOLED(
-  String bioStat, String nbStat,
-  float bioDist,  float nbDist,
-  bool wifiOk
-) {
+void updateOLED(int bioLvl, int nbLvl,
+                float bDist, float nDist, bool wifiOk) {
   display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SH110X_WHITE);
+
   display.setCursor(0, 0);
-  display.println("SMART BIN SYSTEM");
+  display.println("SMARTBIN IOT v2.1");
+  display.drawLine(0, 10, 127, 10, SH110X_WHITE);
 
-  display.setCursor(0, 15);
-  display.print("BIO: ");
-  display.println(bioStat);
+  display.setCursor(0, 14);
+  display.print("BIO:  ");
+  display.print(bioLvl < 0 ? 0 : bioLvl);
+  display.print("%");
+  if      (bioLvl >= 100) display.println(" [FULL]");
+  else if (bioLvl >= 75)  display.println(" [HIGH]");
+  else                    display.println(" [OK]  ");
 
-  display.setCursor(0, 30);
-  display.print("NON: ");
-  display.println(nbStat);
+  display.setCursor(0, 26);
+  display.print("NONB: ");
+  display.print(nbLvl < 0 ? 0 : nbLvl);
+  display.print("%");
+  if      (nbLvl >= 100) display.println(" [FULL]");
+  else if (nbLvl >= 75)  display.println(" [HIGH]");
+  else                   display.println(" [OK]  ");
 
-  display.setCursor(0, 50);
+  display.drawLine(0, 38, 127, 38, SH110X_WHITE);
 
-  // Priority 1: Full warning
-  if (bioStat == "100% FULL" || nbStat == "100% FULL") {
-    display.println("STATUS: BIN FULL!");
-  }
-  // Priority 2: Hand/trash detected
-  else if (bioDist <= 5.0 || nbDist <= 5.0) {
-    display.println(">> TRASH DETECTED");
-  }
-  // Priority 3: Ready
-  else {
-    display.print(wifiOk ? "STATUS: READY" : "WiFi: OFFLINE");
-  }
+  display.setCursor(0, 42);
+  if      (bioLvl >= 100 || nbLvl >= 100) display.println("!! BIN FULL !!");
+  else if (bioLvl >= 75  || nbLvl >= 75)  display.println("NEAR CAPACITY");
+  else if (bDist <= 5.0  || nDist <= 5.0) display.println(">> TRASH DETECT");
+  else if (!wifiOk)                        display.println("WiFi: OFFLINE");
+  else                                     display.println("STATUS: READY");
+
+  display.setCursor(0, 54);
+  display.print(wifiOk ? "WiFi OK" : "WiFi OFFLINE");
 
   display.display();
+}
+
+
+// ================================================================
+// WIFI TASK — runs on Core 0
+//
+// All blocking HTTP calls (pushBinLog, pollCommands) live here.
+// Core 1 (main loop) is never stalled by network I/O.
+// ================================================================
+void wifiTask(void* parameter) {
+  unsigned long lastPush      = 0;
+  unsigned long lastCmdPoll   = 0;
+  unsigned long lastReconnect = 0;
+
+  for (;;) {
+    unsigned long now = millis();
+
+    // WiFi watchdog
+    if (WiFi.status() != WL_CONNECTED && now - lastReconnect >= 30000) {
+      lastReconnect = now;
+      Serial.println("[WiFi] Reconnecting...");
+      WiFi.reconnect();
+    }
+
+    // Heartbeat push every 3 s
+    if (now - lastPush >= PUSH_INTERVAL) {
+      lastPush = now;
+      pushBinLog(currentBioLevel, currentNbLevel,
+                 currentBioMM,   currentNbMM,
+                 bioServoOpen,   nonBioServoOpen);
+    }
+
+    // Command poll every 3 s
+    if (now - lastCmdPoll >= CMD_POLL_INTERVAL) {
+      lastCmdPoll = now;
+      pollCommands();
+    }
+
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
 }
 
 
@@ -484,30 +454,31 @@ void setup() {
   display.setTextSize(1);
   display.setTextColor(SH110X_WHITE);
   display.setCursor(0, 0);
-  display.println("SMART BIN IoT v2");
+  display.println("SmartBin IoT v2.1");
   display.println("Group 5 IT38B NBSC");
+  display.println("");
   display.println("Booting...");
   display.display();
 
-  // GPIO setup
+  // GPIO
   pinMode(LED_BIO_RED,      OUTPUT);
   pinMode(LED_BIO_GREEN,    OUTPUT);
   pinMode(LED_NONBIO_RED,   OUTPUT);
   pinMode(LED_NONBIO_GREEN, OUTPUT);
   pinMode(BUZZER,           OUTPUT);
-  pinMode(TRIG1,            OUTPUT);
-  pinMode(ECHO1,            INPUT);
-  pinMode(TRIG2,            OUTPUT);
-  pinMode(ECHO2,            INPUT);
-  pinMode(XSHUT1,           OUTPUT);
-  pinMode(XSHUT2,           OUTPUT);
+  pinMode(TRIG1, OUTPUT); pinMode(ECHO1, INPUT);
+  pinMode(TRIG2, OUTPUT); pinMode(ECHO2, INPUT);
+  pinMode(XSHUT1, OUTPUT);
+  pinMode(XSHUT2, OUTPUT);
 
-  // Safe defaults
+  // Default LED state — green on boot
   digitalWrite(LED_BIO_GREEN,    HIGH);
+  digitalWrite(LED_BIO_RED,      LOW);
   digitalWrite(LED_NONBIO_GREEN, HIGH);
+  digitalWrite(LED_NONBIO_RED,   LOW);
   digitalWrite(BUZZER,           LOW);
 
-  // Servo init
+  // Servos
   servo1.setPeriodHertz(50);
   servo2.setPeriodHertz(50);
   servo1.attach(SERVO1_PIN, 500, 2400);
@@ -515,7 +486,7 @@ void setup() {
   servo1.write(SERVO_CLOSED);
   servo2.write(SERVO_CLOSED);
 
-  // VL53L0X initialization (original sequence preserved)
+  // VL53L0X init
   digitalWrite(XSHUT1, LOW);
   digitalWrite(XSHUT2, LOW);
   delay(100);
@@ -525,9 +496,9 @@ void setup() {
   if (sensor1.init()) {
     sensor1.setAddress(0x30);
     sensor1.setTimeout(500);
-    Serial.println("[VL53L0X] BIO sensor OK at 0x30");
+    Serial.println("[VL53L0X] BIO OK @ 0x30");
   } else {
-    Serial.println("[VL53L0X] BIO sensor FAILED");
+    Serial.println("[VL53L0X] BIO SENSOR FAILED");
   }
 
   digitalWrite(XSHUT2, HIGH);
@@ -535,233 +506,170 @@ void setup() {
   if (sensor2.init()) {
     sensor2.setAddress(0x31);
     sensor2.setTimeout(500);
-    Serial.println("[VL53L0X] NON-BIO sensor OK at 0x31");
+    Serial.println("[VL53L0X] NON-BIO OK @ 0x31");
   } else {
-    Serial.println("[VL53L0X] NON-BIO sensor FAILED");
+    Serial.println("[VL53L0X] NON-BIO SENSOR FAILED");
   }
 
   // WiFi
   display.clearDisplay();
   display.setCursor(0, 0);
   display.println("Connecting WiFi...");
+  display.println(WIFI_SSID);
   display.display();
-
   connectWiFi();
 
-  // Push startup event to Supabase
-  postBinLog(
-    0, 0,           // bio_level, nb_level
-    0, 0,           // bio_distance_mm, nb_distance_mm
-    "0% FULL", "0% FULL",
-    false, false,
-    "startup",      // event_type
-    "",             // alert_bin = NULL
-    "ESP32 booted"
+  // Launch WiFi/HTTP task on Core 0
+  // main loop() runs on Core 1 — sensor & servo only, no blocking
+  xTaskCreatePinnedToCore(
+    wifiTask,    // function
+    "WiFiTask",  // name (for debugging)
+    8192,        // stack bytes — needs room for TLS + JSON buffers
+    NULL,        // parameter
+    1,           // priority
+    NULL,        // task handle (not needed)
+    0            // Core 0
   );
 
-  Serial.println("[System] READY");
-  lastSupabasePush = millis();
-  lastUptimeTick   = millis();
+  Serial.println("[System] READY — WiFi task on Core 0, sensors/servos on Core 1.");
 }
 
 
 // ================================================================
-// LOOP
+// LOOP — Core 1 only: sensors, servos, LEDs, OLED
+//
+// No HTTP calls here. The WiFi task on Core 0 handles all network
+// I/O so this loop is never stalled — lid opens the instant the
+// ultrasonic sensor detects an object, every single time.
 // ================================================================
 void loop() {
   unsigned long now = millis();
 
-  // ── Uptime counter ──────────────────────────────────────────
-  if (now - lastUptimeTick >= 1000) {
-    uptimeSeconds++;
-    lastUptimeTick = now;
+  // ════════════════════════════════════════════════════════════
+  // 1. READ VL53L0X (fill level)
+  // ════════════════════════════════════════════════════════════
+  int rawBioMM = sensor1.readRangeSingleMillimeters();
+  int rawNbMM  = sensor2.readRangeSingleMillimeters();
+
+  int bioLvl = mmToPercent(rawBioMM);
+  int nbLvl  = mmToPercent(rawNbMM);
+
+  if (bioLvl >= 0) { currentBioLevel = bioLvl; currentBioMM = rawBioMM; }
+  if (nbLvl  >= 0) { currentNbLevel  = nbLvl;  currentNbMM  = rawNbMM;  }
+
+  // ════════════════════════════════════════════════════════════
+  // 2. READ ULTRASONIC (hand/object detection)
+  // ════════════════════════════════════════════════════════════
+  bioDist = getDistanceInches(TRIG1, ECHO1);
+  nbDist  = getDistanceInches(TRIG2, ECHO2);
+
+  // ════════════════════════════════════════════════════════════
+  // 3. PROCESS PENDING DASHBOARD COMMAND (from WiFi task)
+  // All hardware access stays on Core 1.
+  // ════════════════════════════════════════════════════════════
+  if (pendingCmd) {
+    executeCommand((const char*)pendingCmdStr);
+    pendingCmd = false;  // release WiFi task to continue
   }
 
-  // ── WiFi reconnect watchdog ──────────────────────────────────
-  if (WiFi.status() != WL_CONNECTED) {
-    static unsigned long lastReconnect = 0;
-    if (now - lastReconnect >= 30000) {
-      lastReconnect = now;
-      Serial.println("[WiFi] Reconnecting...");
-      WiFi.reconnect();
-    }
-  }
+  // ════════════════════════════════════════════════════════════
+  // 4. LED LOGIC
+  // ════════════════════════════════════════════════════════════
+  bool bioFull = (currentBioLevel >= 100);
+  bool nbFull  = (currentNbLevel  >= 100);
 
-  // ────────────────────────────────────────────────────────────
-  // 1. READ VL53L0X DISTANCE SENSORS
-  // ────────────────────────────────────────────────────────────
-  int d1 = sensor1.readRangeSingleMillimeters(); // BIO
-  int d2 = sensor2.readRangeSingleMillimeters(); // NON-BIO
+  digitalWrite(LED_BIO_RED,      bioFull ? HIGH : LOW);
+  digitalWrite(LED_BIO_GREEN,    bioFull ? LOW  : HIGH);
+  digitalWrite(LED_NONBIO_RED,   nbFull  ? HIGH : LOW);
+  digitalWrite(LED_NONBIO_GREEN, nbFull  ? LOW  : HIGH);
 
-  int bioLevel = mmToLevel(d1);
-  int nbLevel  = mmToLevel(d2);
-
-  String bioStatus = levelToStatus(bioLevel);
-  String nbStatus  = levelToStatus(nbLevel);
-
-  // ────────────────────────────────────────────────────────────
-  // 2. READ ULTRASONIC SENSORS (original logic)
-  // ────────────────────────────────────────────────────────────
-  float bioDist   = getDistanceInches(TRIG1, ECHO1);
-  float nonBioDist = getDistanceInches(TRIG2, ECHO2);
-
-  // ────────────────────────────────────────────────────────────
-  // 3. LED LOGIC (original, unchanged)
-  // ────────────────────────────────────────────────────────────
-  digitalWrite(LED_BIO_RED,      (bioStatus == "100% FULL") ? HIGH : LOW);
-  digitalWrite(LED_BIO_GREEN,    (bioStatus != "100% FULL") ? HIGH : LOW);
-  digitalWrite(LED_NONBIO_RED,   (nbStatus  == "100% FULL") ? HIGH : LOW);
-  digitalWrite(LED_NONBIO_GREEN, (nbStatus  != "100% FULL") ? HIGH : LOW);
-
-  // ────────────────────────────────────────────────────────────
-  // 4. BIO BIN — SERVO & BUZZER (original logic, unchanged)
-  // ────────────────────────────────────────────────────────────
-  if (bioDist <= 5.0 && !bioBuzzLock) {
-    bioBuzzLock = true;
-    if (bioStatus == "100% FULL") fullBeep(); else shortBeep();
-  }
-  if (bioDist > 6.0) bioBuzzLock = false;
-
-  if (bioDist <= 5.0 && !bioServoOpen
-      && bioStatus != "100% FULL"
-      && bioStatus != "SENSOR ERR") {
-    servo1.write(SERVO_OPEN);
+  // ════════════════════════════════════════════════════════════
+  // 5. BIO BIN
+  //    Open:  INSTANT the moment object is detected.
+  //    Close: 3 seconds after opening, no sooner.
+  // ════════════════════════════════════════════════════════════
+  if (bioDist <= 5.0 && !bioServoOpen && !bioFull) {
+    servo1.write(SERVO_OPEN);  // instant — Core 1 is never stalled
     bioServoOpen = true;
     bioTimer = now;
   }
-  if (bioServoOpen && now - bioTimer >= 3000) {
+  if (bioDist <= 5.0 && !bioBuzzLock) {
+    bioBuzzLock = true;
+    bioFull ? longBeep() : shortBeep();
+  }
+  if (bioDist > 6.0) bioBuzzLock = false;
+
+  if (bioServoOpen && (now - bioTimer >= 3000)) {
     servo1.write(SERVO_CLOSED);
     bioServoOpen = false;
   }
 
-  // ────────────────────────────────────────────────────────────
-  // 5. NON-BIO BIN — SERVO & BUZZER (original logic, unchanged)
-  // ────────────────────────────────────────────────────────────
-  if (nonBioDist <= 5.0 && !nonBioBuzzLock) {
-    nonBioBuzzLock = true;
-    if (nbStatus == "100% FULL") fullBeep(); else shortBeep();
-  }
-  if (nonBioDist > 6.0) nonBioBuzzLock = false;
-
-  if (nonBioDist <= 5.0 && !nonBioServoOpen
-      && nbStatus != "100% FULL"
-      && nbStatus != "SENSOR ERR") {
-    servo2.write(SERVO_OPEN);
+  // ════════════════════════════════════════════════════════════
+  // 6. NON-BIO BIN — same logic
+  // ════════════════════════════════════════════════════════════
+  if (nbDist <= 5.0 && !nonBioServoOpen && !nbFull) {
+    servo2.write(SERVO_OPEN);  // instant
     nonBioServoOpen = true;
     nonBioTimer = now;
   }
-  if (nonBioServoOpen && now - nonBioTimer >= 3000) {
+  if (nbDist <= 5.0 && !nonBioBuzzLock) {
+    nonBioBuzzLock = true;
+    nbFull ? longBeep() : shortBeep();
+  }
+  if (nbDist > 6.0) nonBioBuzzLock = false;
+
+  if (nonBioServoOpen && (now - nonBioTimer >= 3000)) {
     servo2.write(SERVO_CLOSED);
     nonBioServoOpen = false;
   }
 
-  // ────────────────────────────────────────────────────────────
-  // 6. THRESHOLD ALERTS — GAS email + Supabase alert row
-  //    Only fires once per crossing (reset when bin clears)
-  // ────────────────────────────────────────────────────────────
-
-  // BIO — 75% warning
-  if (bioLevel == 75 && !bioWarnSent) {
-    bioWarnSent = true;
-    Serial.println("[ALERT] Bio bin at 75%");
-    // Insert alert row to bin_logs — trigger writes to alert_history
-    postBinLog(
-      bioLevel, nbLevel, d1, d2,
-      bioStatus, nbStatus,
-      bioServoOpen, nonBioServoOpen,
-      "alert", "bio", "75% threshold reached"
-    );
-    sendGASAlert("Biodegradable", bioLevel, "warn");
+  // ════════════════════════════════════════════════════════════
+  // 7. THRESHOLD LOGGING
+  // ════════════════════════════════════════════════════════════
+  if (currentBioLevel >= 75 && !bioWarnLogged) {
+    bioWarnLogged = true;
+    Serial.println("[ALERT] Bio bin at " + String(currentBioLevel) + "% — HIGH");
   }
-  // Reset warn flag when level drops below 75
-  if (bioLevel < 75) bioWarnSent = false;
+  if (currentBioLevel < 75) bioWarnLogged = false;
 
-  // BIO — 100% full
-  if (bioLevel == 100 && !bioFullSent) {
-    bioFullSent = true;
-    Serial.println("[ALERT] Bio bin FULL");
-    postBinLog(
-      bioLevel, nbLevel, d1, d2,
-      bioStatus, nbStatus,
-      bioServoOpen, nonBioServoOpen,
-      "alert", "bio", "Bin full"
-    );
-    sendGASAlert("Biodegradable", bioLevel, "full");
+  if (currentBioLevel >= 100 && !bioFullLogged) {
+    bioFullLogged = true;
+    Serial.println("[ALERT] Bio bin FULL — disposal required");
   }
-  // Reset full flag when bin is emptied
-  if (bioLevel < 100) bioFullSent = false;
+  if (currentBioLevel < 100) bioFullLogged = false;
 
-  // NON-BIO — 75% warning
-  if (nbLevel == 75 && !nonBioWarnSent) {
-    nonBioWarnSent = true;
-    Serial.println("[ALERT] Non-Bio bin at 75%");
-    postBinLog(
-      bioLevel, nbLevel, d1, d2,
-      bioStatus, nbStatus,
-      bioServoOpen, nonBioServoOpen,
-      "alert", "nonbio", "75% threshold reached"
-    );
-    sendGASAlert("Non-Biodegradable", nbLevel, "warn");
+  if (currentNbLevel >= 75 && !nbWarnLogged) {
+    nbWarnLogged = true;
+    Serial.println("[ALERT] NonBio bin at " + String(currentNbLevel) + "% — HIGH");
   }
-  if (nbLevel < 75) nonBioWarnSent = false;
+  if (currentNbLevel < 75) nbWarnLogged = false;
 
-  // NON-BIO — 100% full
-  if (nbLevel == 100 && !nonBioFullSent) {
-    nonBioFullSent = true;
-    Serial.println("[ALERT] Non-Bio bin FULL");
-    postBinLog(
-      bioLevel, nbLevel, d1, d2,
-      bioStatus, nbStatus,
-      bioServoOpen, nonBioServoOpen,
-      "alert", "nonbio", "Bin full"
-    );
-    sendGASAlert("Non-Biodegradable", nbLevel, "full");
+  if (currentNbLevel >= 100 && !nbFullLogged) {
+    nbFullLogged = true;
+    Serial.println("[ALERT] NonBio bin FULL — disposal required");
   }
-  if (nbLevel < 100) nonBioFullSent = false;
+  if (currentNbLevel < 100) nbFullLogged = false;
 
-  // ────────────────────────────────────────────────────────────
-  // 7. ROUTINE SUPABASE PUSH (every SUPABASE_INTERVAL ms)
-  //    Only for non-error sensor readings.
-  //    Trigger trg_update_device_status keeps device_status fresh.
-  // ────────────────────────────────────────────────────────────
-  if (now - lastSupabasePush >= SUPABASE_INTERVAL) {
-    lastSupabasePush = now;
+  // ════════════════════════════════════════════════════════════
+  // 8. OLED UPDATE
+  // ════════════════════════════════════════════════════════════
+  updateOLED(currentBioLevel, currentNbLevel,
+             bioDist, nbDist,
+             WiFi.status() == WL_CONNECTED);
 
-    if (bioLevel >= 0 && nbLevel >= 0) {  // skip on sensor error
-      postBinLog(
-        bioLevel, nbLevel,
-        d1, d2,
-        bioStatus, nbStatus,
-        bioServoOpen, nonBioServoOpen,
-        "reading",  // event_type
-        "",         // alert_bin = NULL for routine readings
-        ""
-      );
-    }
+  // ════════════════════════════════════════════════════════════
+  // 9. SERIAL DEBUG
+  // ════════════════════════════════════════════════════════════
+  Serial.printf("[BIO]  %4d mm → %3d%%  US: %.1f in  Servo: %s\n",
+                currentBioMM, currentBioLevel,
+                bioDist, bioServoOpen ? "OPEN" : "CLOSED");
+  Serial.printf("[NONB] %4d mm → %3d%%  US: %.1f in  Servo: %s\n",
+                currentNbMM, currentNbLevel,
+                nbDist, nonBioServoOpen ? "OPEN" : "CLOSED");
+  Serial.printf("[WiFi] %s  RSSI: %d dBm\n",
+                WiFi.status() == WL_CONNECTED ? "OK" : "OFFLINE",
+                WiFi.RSSI());
+  Serial.println("---");
 
-    // Also update uptime in device_status
-    updateDeviceUptime();
-  }
-
-  // ────────────────────────────────────────────────────────────
-  // 8. OLED UPDATE (original priority logic, unchanged)
-  // ────────────────────────────────────────────────────────────
-  updateOLED(
-    bioStatus, nbStatus,
-    bioDist, nonBioDist,
-    WiFi.status() == WL_CONNECTED
-  );
-
-  // ────────────────────────────────────────────────────────────
-  // 9. SERIAL DEBUG (original output preserved)
-  // ────────────────────────────────────────────────────────────
-  Serial.print("BIO: ");  Serial.print(d1); Serial.print("mm | ");
-  Serial.print("NON: ");  Serial.print(d2); Serial.println("mm");
-  Serial.print("BIO%: "); Serial.print(bioLevel);
-  Serial.print("  NB%: ");Serial.println(nbLevel);
-  Serial.print("BIO_US: ");    Serial.print(bioDist);
-  Serial.print("in  NON_US: "); Serial.print(nonBioDist); Serial.println("in");
-  Serial.println("--------------------");
-
-  delay(50); // original loop delay preserved
+  delay(50);
 }
